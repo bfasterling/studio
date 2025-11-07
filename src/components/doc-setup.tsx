@@ -26,6 +26,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
+import { useFirestore } from '@/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -44,24 +47,23 @@ const getPdfJs = async () => {
 const formSchema = z.object({
   documentContent: z.string().min(1, 'El contenido del documento es obligatorio.'),
   analysisInstructions: z.string().min(1, 'Las instrucciones de análisis son obligatorias.'),
-  fileName: z.string().optional(),
+  fileName: z.string().min(1, 'El nombre del archivo es obligatorio.'),
 });
 
 export type DocSetupFormValues = z.infer<typeof formSchema>;
 
 type DocSetupProps = {
-  isAnalyzing: boolean;
-  onAnalysisStart: () => void;
-  onAnalysisComplete: (result: DocSetupFormValues) => void;
-  onAnalysisError: (error: string) => void;
+  onUploadSuccess: () => void;
+  onUploadError: (error: string) => void;
 };
 
 export function DocSetup({
-  isAnalyzing,
-  onAnalysisStart,
-  onAnalysisComplete,
-  onAnalysisError,
+  onUploadSuccess,
+  onUploadError,
 }: DocSetupProps) {
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const firestore = useFirestore();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -71,7 +73,6 @@ export function DocSetup({
     },
   });
   
-  const [isReadingFile, setIsReadingFile] = React.useState(false);
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
@@ -95,9 +96,8 @@ export function DocSetup({
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
-        setIsReadingFile(true);
-        onAnalysisStart();
-        form.setValue('fileName', file.name);
+        setIsProcessing(true);
+        form.setValue('fileName', file.name, { shouldValidate: true });
 
         try {
           let content = '';
@@ -109,13 +109,13 @@ export function DocSetup({
           form.setValue('documentContent', content, { shouldValidate: true });
         } catch (error: any) {
           console.error('Error procesando archivo:', error);
-          onAnalysisError(error.message || 'No se pudo leer o procesar el archivo.');
+          onUploadError(error.message || 'No se pudo leer o procesar el archivo.');
         } finally {
-          setIsReadingFile(false);
+          setIsProcessing(false);
         }
       }
     },
-    [form, onAnalysisError, onAnalysisStart]
+    [form, onUploadError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -125,39 +125,45 @@ export function DocSetup({
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
-    disabled: isReadingFile || isAnalyzing,
+    disabled: isProcessing,
   });
 
   const clearFile = () => {
-    form.setValue('documentContent', '');
-    form.setValue('fileName', '');
+    form.reset();
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!values.documentContent.trim()) {
-      onAnalysisError('El contenido del documento no puede estar vacío.');
-      return;
-    }
-     if (!values.analysisInstructions.trim()) {
-        onAnalysisError('Las instrucciones de análisis no pueden estar vacías.');
+    if (!firestore) {
+        onUploadError("La base de datos no está lista. Inténtalo de nuevo.");
         return;
     }
-    onAnalysisComplete({
-      documentContent: values.documentContent,
-      analysisInstructions: values.analysisInstructions,
-    });
+
+    setIsProcessing(true);
+
+    try {
+        await addDoc(collection(firestore, 'documents'), {
+            ...values,
+            createdAt: serverTimestamp(),
+        });
+        onUploadSuccess();
+        form.reset();
+    } catch (error: any) {
+        console.error("Error guardando documento: ", error);
+        onUploadError(error.message || "No se pudo guardar el documento.");
+    } finally {
+        setIsProcessing(false);
+    }
   }
 
   const fileName = form.watch('fileName');
   const documentContent = form.watch('documentContent');
-  const isLoading = isReadingFile;
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
-        <CardTitle>Configuración de Documento</CardTitle>
+        <CardTitle>Cargar Nuevo Documento</CardTitle>
         <CardDescription>
-          Proporciona un documento e instrucciones para que la IA sepa cómo comportarse.
+          Sube un documento y proporciona instrucciones para la IA.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -165,7 +171,7 @@ export function DocSetup({
           <CardContent className="space-y-6">
             <FormField
               control={form.control}
-              name="documentContent"
+              name="fileName"
               render={() => (
                 <FormItem>
                   <FormLabel>Documento</FormLabel>
@@ -176,7 +182,7 @@ export function DocSetup({
                           <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                           <span className="text-sm font-medium truncate">{fileName}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6 flex-shrink-0" disabled={isLoading}>
+                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6 flex-shrink-0" disabled={isProcessing}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -186,17 +192,17 @@ export function DocSetup({
                         className={cn(
                           'flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-md cursor-pointer transition-colors',
                           isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50',
-                          (isLoading) && 'cursor-not-allowed opacity-50'
+                          (isProcessing) && 'cursor-not-allowed opacity-50'
                         )}
                       >
                         <input {...getInputProps()} />
-                        {isReadingFile ? (
+                        {isProcessing ? (
                            <Loader2 className="h-10 w-10 text-muted-foreground mb-2 animate-spin" />
                         ) : (
                           <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
                         )}
                         <p className="text-center text-sm text-muted-foreground">
-                          {isReadingFile ? 'Procesando archivo...' : isDragActive
+                          {isProcessing ? 'Procesando archivo...' : isDragActive
                             ? 'Suelta el archivo aquí...'
                             : "Arrastra y suelta un archivo .txt o .pdf aquí, o haz clic para seleccionar"}
                         </p>
@@ -221,7 +227,7 @@ export function DocSetup({
                       placeholder="Ej: 'Actúa como un experto en finanzas y solo responde preguntas sobre el documento.' o 'Resume los hallazgos clave.'"
                       className="resize-y"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isProcessing}
                     />
                   </FormControl>
                   <FormDescription>
@@ -233,9 +239,9 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading || !documentContent} className="w-full">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {isReadingFile ? 'Procesando...' : 'Iniciar Chat'}
+            <Button type="submit" disabled={isProcessing || !documentContent} className="w-full">
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isProcessing ? 'Guardando...' : 'Guardar Documento'}
             </Button>
           </CardFooter>
         </form>

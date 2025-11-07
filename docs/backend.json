@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Document": {
+      "title": "Document",
+      "description": "Represents an uploaded document with its content and analysis instructions.",
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "description": "The name of the uploaded file."
+        },
+        "content": {
+          "type": "string",
+          "description": "The extracted text content of the document."
+        },
+        "analysisInstructions": {
+          "type": "string",
+          "description": "Instructions for the AI on how to behave."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the document was created."
+        }
+      },
+      "required": ["fileName", "content", "analysisInstructions", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "/documents/{documentId}": {
+      "schema": {
+        "$ref": "#/entities/Document"
+      },
+      "description": "Stores all the uploaded documents."
+    }
+  }
+}
