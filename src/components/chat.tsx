@@ -65,7 +65,7 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: result.error || 'Failed to get a response from the AI.',
+        description: result.error || 'No se pudo obtener una respuesta de la IA.',
       });
       // remove the user message if the API call failed
       setMessages((prev) => prev.slice(0, -1));
@@ -77,8 +77,8 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
   return (
     <Card className="w-full h-[70vh] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Chat with your Documents</CardTitle>
-        <Button variant="ghost" size="icon" onClick={onReset} aria-label="Start New Analysis">
+        <CardTitle>Chatea con tus Documentos</CardTitle>
+        <Button variant="ghost" size="icon" onClick={onReset} aria-label="Iniciar Nuevo Análisis">
           <RotateCcw className="h-4 w-4" />
         </Button>
       </CardHeader>
@@ -91,7 +91,7 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
               </Avatar>
               <div className="p-3 rounded-lg bg-muted max-w-[80%]">
                 <p className="text-sm text-foreground">
-                  Hello! I've analyzed your documents. Ask me anything about their content.
+                  ¡Hola! He analizado tus documentos. Pregúntame lo que quieras sobre su contenido.
                 </p>
               </div>
             </div>
@@ -144,7 +144,7 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
           <Input
             value={input}
             onChange={handleInputChange}
-            placeholder="Ask a question about your documents..."
+            placeholder="Haz una pregunta sobre tus documentos..."
             disabled={isLoading}
           />
           <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>

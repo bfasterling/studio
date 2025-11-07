@@ -31,14 +31,15 @@ import type * as PdfJs from 'pdfjs-dist';
 
 // Set up the worker
 const getPdfJs = async () => {
-  const pdfjs = await import('pdfjs-dist');
+  const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
+  // @ts-ignore
   pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   return pdfjs;
 }
 
 const formSchema = z.object({
-  documentContent: z.string().min(1, 'Document content is required.'),
-  analysisInstructions: z.string().min(1, 'Analysis instructions are required.'),
+  documentContent: z.string().min(1, 'El contenido del documento es obligatorio.'),
+  analysisInstructions: z.string().min(1, 'Las instrucciones de análisis son obligatorias.'),
   fileName: z.string().optional(),
 });
 
@@ -63,25 +64,32 @@ export function DocSetup({
       fileName: '',
     },
   });
+  
+  const [isReadingFile, setIsReadingFile] = React.useState(false);
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
-    const pdfjs = await getPdfJs();
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument(arrayBuffer).promise;
-    let textContent = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const text = await page.getTextContent();
-      textContent += text.items.map((item: any) => item.str).join(' ');
+    try {
+      const pdfjs = await getPdfJs();
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument(arrayBuffer).promise;
+      let textContent = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        textContent += text.items.map((item: any) => item.str).join(' ');
+      }
+      return textContent;
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      throw new Error("No se pudo extraer el texto del PDF.");
     }
-    return textContent;
   };
 
   const onDrop = React.useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
-        onAnalysisStart(); // Start loading indicator early
+        setIsReadingFile(true);
         form.setValue('fileName', file.name);
 
         try {
@@ -92,20 +100,15 @@ export function DocSetup({
             content = await file.text();
           }
           form.setValue('documentContent', content, { shouldValidate: true });
-        } catch (error) {
-          console.error('Error processing file:', error);
-          onAnalysisError('Failed to read or parse the file.');
+        } catch (error: any) {
+          console.error('Error procesando archivo:', error);
+          onAnalysisError(error.message || 'No se pudo leer o procesar el archivo.');
         } finally {
-          // A little trick to ensure the button state updates correctly
-          // We don't want the main analyzing state, just loading for file read
-          if (!isAnalyzing) { 
-            onAnalysisStart();
-            setTimeout(() => onAnalysisError(''), 10);
-          }
+          setIsReadingFile(false);
         }
       }
     },
-    [form, onAnalysisStart, onAnalysisError, isAnalyzing]
+    [form, onAnalysisError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -115,6 +118,7 @@ export function DocSetup({
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
+    disabled: isReadingFile || isAnalyzing,
   });
 
   const clearFile = () => {
@@ -129,19 +133,20 @@ export function DocSetup({
     if (result.success && result.data) {
       onAnalysisComplete(result.data);
     } else {
-      onAnalysisError(result.error || 'An unknown error occurred.');
+      onAnalysisError(result.error || 'Ocurrió un error desconocido.');
     }
   }
 
   const fileName = form.watch('fileName');
   const documentContent = form.watch('documentContent');
+  const isLoading = isAnalyzing || isReadingFile;
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
-        <CardTitle>Document Setup</CardTitle>
+        <CardTitle>Configuración de Documento</CardTitle>
         <CardDescription>
-          Provide a document and analysis instructions to begin.
+          Proporciona un documento e instrucciones de análisis para comenzar.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -152,7 +157,7 @@ export function DocSetup({
               name="documentContent"
               render={() => (
                 <FormItem>
-                  <FormLabel>Document</FormLabel>
+                  <FormLabel>Documento</FormLabel>
                   <FormControl>
                     {fileName ? (
                       <div className="flex items-center justify-between p-3 rounded-md border border-input bg-background">
@@ -160,7 +165,7 @@ export function DocSetup({
                           <FileText className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm font-medium">{fileName}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isAnalyzing}>
+                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isLoading}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -169,21 +174,26 @@ export function DocSetup({
                         {...getRootProps()}
                         className={cn(
                           'flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-md cursor-pointer transition-colors',
-                          isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50'
+                          isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50',
+                          (isLoading) && 'cursor-not-allowed opacity-50'
                         )}
                       >
                         <input {...getInputProps()} />
-                        <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
+                        {isReadingFile ? (
+                           <Loader2 className="h-10 w-10 text-muted-foreground mb-2 animate-spin" />
+                        ) : (
+                          <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
+                        )}
                         <p className="text-center text-sm text-muted-foreground">
-                          {isDragActive
-                            ? 'Drop the file here...'
-                            : "Drag & drop a .txt or .pdf file here, or click to select"}
+                          {isReadingFile ? 'Procesando archivo...' : isDragActive
+                            ? 'Suelta el archivo aquí...'
+                            : "Arrastra y suelta un archivo .txt o .pdf aquí, o haz clic para seleccionar"}
                         </p>
                       </div>
                     )}
                   </FormControl>
                   <FormDescription>
-                    Upload a plain text or PDF file for analysis.
+                    Sube un archivo de texto plano o PDF para analizar.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -194,17 +204,17 @@ export function DocSetup({
               name="analysisInstructions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Analysis Instructions</FormLabel>
+                  <FormLabel>Instrucciones de Análisis</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g., 'Summarize the key findings in each document.' or 'Extract all names and addresses.'"
+                      placeholder="Ej: 'Resume los hallazgos clave en cada documento.' o 'Extrae todos los nombres y direcciones.'"
                       className="resize-y"
                       {...field}
-                      disabled={isAnalyzing}
+                      disabled={isLoading}
                     />
                   </FormControl>
                   <FormDescription>
-                    Tell the AI how to analyze the provided content.
+                    Indica a la IA cómo analizar el contenido proporcionado.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -212,9 +222,9 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isAnalyzing || !documentContent} className="w-full">
-              {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
+            <Button type="submit" disabled={isLoading || !documentContent} className="w-full">
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isAnalyzing ? 'Analizando...' : isReadingFile ? 'Procesando...' : 'Analizar Documento'}
             </Button>
           </CardFooter>
         </form>

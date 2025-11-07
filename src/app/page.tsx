@@ -15,8 +15,8 @@ export default function Home() {
     setAnalysisResult(result);
     setIsAnalyzing(false);
     toast({
-      title: "Analysis Complete",
-      description: "You can now start chatting with the AI.",
+      title: "Análisis Completo",
+      description: "Ahora puedes empezar a chatear con la IA.",
     });
   };
 
@@ -27,7 +27,7 @@ export default function Home() {
   const handleAnalysisError = (errorMessage: string) => {
     toast({
       variant: "destructive",
-      title: "Analysis Failed",
+      title: "Análisis Fallido",
       description: errorMessage,
     });
     setIsAnalyzing(false);
@@ -60,7 +60,7 @@ export default function Home() {
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">
-        <p>Powered by Firebase and Google AI</p>
+        <p>Powered By Exagono Software</p>
       </footer>
     </div>
   );

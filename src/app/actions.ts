@@ -14,10 +14,10 @@ export async function performAnalysis(
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!documents.length || !documents[0].content.trim()) {
-      return { success: false, error: 'Document content cannot be empty.' };
+      return { success: false, error: 'El contenido del documento no puede estar vacío.' };
     }
     if (!analysisInstructions.trim()) {
-        return { success: false, error: 'Analysis instructions cannot be empty.' };
+        return { success: false, error: 'Las instrucciones de análisis no pueden estar vacías.' };
     }
 
     const input: AnalyzeDocumentsBasedOnInstructionsInput = {
@@ -31,8 +31,8 @@ export async function performAnalysis(
     return { success: true, data: combinedResults };
   } catch (e) {
     console.error(e);
-    const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-    return { success: false, error: `Failed to analyze documents: ${errorMessage}` };
+    const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+    return { success: false, error: `No se pudieron analizar los documentos: ${errorMessage}` };
   }
 }
 
@@ -42,7 +42,7 @@ export async function getAnswer(
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!question || !analyzedDocumentContent) {
-      return { success: false, error: 'Question and context are required.' };
+      return { success: false, error: 'La pregunta y el contexto son obligatorios.' };
     }
     
     const { answer } = await answerQuestionsBasedOnAnalyzedDocuments({
@@ -53,7 +53,7 @@ export async function getAnswer(
     return { success: true, data: answer };
   } catch (e) {
     console.error(e);
-    const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-    return { success: false, error: `Failed to get an answer from the AI: ${errorMessage}` };
+    const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+    return { success: false, error: `No se pudo obtener una respuesta de la IA: ${errorMessage}` };
   }
 }
