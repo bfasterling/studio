@@ -27,13 +27,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import pdf from 'pdf-parse';
-
-// This is a workaround for a Next.js issue where structuredClone is not available in edge runtime.
-if (typeof global.structuredClone === 'undefined') {
-  global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
-}
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
@@ -54,8 +47,6 @@ export function DocSetup({
   onAnalysisComplete,
   onAnalysisError,
 }: DocSetupProps) {
-  const { toast } = useToast();
-  const [isParsing, setIsParsing] = React.useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,47 +57,25 @@ export function DocSetup({
   });
 
   const onDrop = React.useCallback(
-    async (acceptedFiles: File[]) => {
+    (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
         form.setValue('fileName', file.name);
-
-        if (file.type === 'application/pdf') {
-          setIsParsing(true);
-          try {
-            const fileBuffer = await file.arrayBuffer();
-            const pdfData = await pdf(Buffer.from(fileBuffer));
-            form.setValue('documentContent', pdfData.text, { shouldValidate: true });
-          } catch (error) {
-            console.error('PDF parsing error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-            toast({
-              variant: 'destructive',
-              title: 'PDF Parsing Failed',
-              description: `Could not read content from PDF: ${errorMessage}`,
-            });
-            clearFile();
-          } finally {
-            setIsParsing(false);
-          }
-        } else {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const content = e.target?.result as string;
-            form.setValue('documentContent', content, { shouldValidate: true });
-          };
-          reader.readAsText(file);
-        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          form.setValue('documentContent', content, { shouldValidate: true });
+        };
+        reader.readAsText(file);
       }
     },
-    [form, toast]
+    [form]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/plain': ['.txt'],
-      'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
   });
@@ -128,8 +97,6 @@ export function DocSetup({
   }
 
   const fileName = form.watch('fileName');
-
-  const isLoading = isAnalyzing || isParsing;
 
   return (
     <Card className="w-full shadow-lg">
@@ -155,7 +122,7 @@ export function DocSetup({
                           <FileText className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm font-medium">{fileName}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isLoading}>
+                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isAnalyzing}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -172,13 +139,13 @@ export function DocSetup({
                         <p className="text-center text-sm text-muted-foreground">
                           {isDragActive
                             ? 'Drop the file here...'
-                            : "Drag & drop a .txt or .pdf file here, or click to select"}
+                            : "Drag & drop a .txt file here, or click to select"}
                         </p>
                       </div>
                     )}
                   </FormControl>
                   <FormDescription>
-                    Upload a plain text or PDF file for analysis.
+                    Upload a plain text file for analysis.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -195,7 +162,7 @@ export function DocSetup({
                       placeholder="e.g., 'Summarize the key findings in each document.' or 'Extract all names and addresses.'"
                       className="resize-y"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isAnalyzing}
                     />
                   </FormControl>
                   <FormDescription>
@@ -207,11 +174,9 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading || !form.watch('documentContent')} className="w-full">
-              {isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isAnalyzing && !isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {!isAnalyzing && !isParsing && <Sparkles className="mr-2 h-4 w-4" />}
-              {isParsing ? 'Parsing PDF...' : isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
+            <Button type="submit" disabled={isAnalyzing || !form.watch('documentContent')} className="w-full">
+              {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
             </Button>
           </CardFooter>
         </form>
