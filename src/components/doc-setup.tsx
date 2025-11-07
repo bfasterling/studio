@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { performAnalysis } from '@/app/actions';
+import { performAnalysis, parsePdf } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
@@ -47,6 +48,8 @@ export function DocSetup({
   onAnalysisComplete,
   onAnalysisError,
 }: DocSetupProps) {
+  const { toast } = useToast();
+  const [isParsing, setIsParsing] = React.useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -57,25 +60,45 @@ export function DocSetup({
   });
 
   const onDrop = React.useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          form.setValue('documentContent', content, { shouldValidate: true });
-          form.setValue('fileName', file.name);
-        };
-        reader.readAsText(file);
+        form.setValue('fileName', file.name);
+
+        if (file.type === 'application/pdf') {
+          setIsParsing(true);
+          const formData = new FormData();
+          formData.append('file', file);
+          const result = await parsePdf(formData);
+          setIsParsing(false);
+          if (result.success && result.data) {
+            form.setValue('documentContent', result.data, { shouldValidate: true });
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'PDF Parsing Failed',
+              description: result.error || 'Could not read content from PDF.',
+            });
+            clearFile();
+          }
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const content = e.target?.result as string;
+            form.setValue('documentContent', content, { shouldValidate: true });
+          };
+          reader.readAsText(file);
+        }
       }
     },
-    [form]
+    [form, toast]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/plain': ['.txt'],
+      'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
   });
@@ -98,12 +121,14 @@ export function DocSetup({
 
   const fileName = form.watch('fileName');
 
+  const isLoading = isAnalyzing || isParsing;
+
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
         <CardTitle>Document Setup</CardTitle>
         <CardDescription>
-          Provide document content and analysis instructions to begin.
+          Provide a document and analysis instructions to begin.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -114,7 +139,7 @@ export function DocSetup({
               name="documentContent"
               render={() => (
                 <FormItem>
-                  <FormLabel>Document Content</FormLabel>
+                  <FormLabel>Document</FormLabel>
                   <FormControl>
                     {fileName ? (
                       <div className="flex items-center justify-between p-3 rounded-md border border-input bg-background">
@@ -122,7 +147,7 @@ export function DocSetup({
                           <FileText className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm font-medium">{fileName}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6">
+                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isLoading}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -139,13 +164,13 @@ export function DocSetup({
                         <p className="text-center text-sm text-muted-foreground">
                           {isDragActive
                             ? 'Drop the file here...'
-                            : "Drag & drop a .txt file here, or click to select file"}
+                            : "Drag & drop a .txt or .pdf file here, or click to select"}
                         </p>
                       </div>
                     )}
                   </FormControl>
                   <FormDescription>
-                    Upload a plain text file for analysis.
+                    Upload a plain text or PDF file for analysis.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -162,6 +187,7 @@ export function DocSetup({
                       placeholder="e.g., 'Summarize the key findings in each document.' or 'Extract all names and addresses.'"
                       className="resize-y"
                       {...field}
+                      disabled={isLoading}
                     />
                   </FormControl>
                   <FormDescription>
@@ -173,13 +199,11 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isAnalyzing || !form.watch('documentContent')} className="w-full">
-              {isAnalyzing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              {isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
+            <Button type="submit" disabled={isLoading || !form.watch('documentContent')} className="w-full">
+              {isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isAnalyzing && !isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {!isAnalyzing && !isParsing && <Sparkles className="mr-2 h-4 w-4" />}
+              {isParsing ? 'Parsing PDF...' : isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
             </Button>
           </CardFooter>
         </form>
