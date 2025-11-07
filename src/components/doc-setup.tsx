@@ -28,9 +28,12 @@ import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import pdf from 'pdf-parse/lib/pdf-parse';
+import pdf from 'pdf-parse';
 
-global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
+// This is a workaround for a Next.js issue where structuredClone is not available in edge runtime.
+if (typeof global.structuredClone === 'undefined') {
+  global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
+}
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
