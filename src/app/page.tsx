@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { DocSetup } from '@/components/doc-setup';
 import { Chat } from '@/components/chat';
 import { useToast } from '@/hooks/use-toast';
-import { FileMessageSquare } from 'lucide-react';
+import { LucideMessageSquare } from 'lucide-react';
 
 export default function Home() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-3xl mx-auto">
         <header className="flex items-center justify-center gap-3 mb-8">
-          <FileMessageSquare className="w-8 h-8 text-primary" />
+          <LucideMessageSquare className="w-8 h-8 text-primary" />
           <h1 className="text-4xl font-bold tracking-tight text-center text-foreground font-headline">
             DocuChat AI
           </h1>
