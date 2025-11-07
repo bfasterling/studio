@@ -27,6 +27,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
+import * as pdfjs from 'pdfjs-dist';
+
+// Set up the worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
@@ -56,26 +60,54 @@ export function DocSetup({
     },
   });
 
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument(arrayBuffer).promise;
+    let textContent = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const text = await page.getTextContent();
+      textContent += text.items.map((item: any) => item.str).join(' ');
+    }
+    return textContent;
+  };
+
   const onDrop = React.useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
+        onAnalysisStart(); // Start loading indicator early
         form.setValue('fileName', file.name);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
+
+        try {
+          let content = '';
+          if (file.type === 'application/pdf') {
+            content = await extractTextFromPdf(file);
+          } else {
+            content = await file.text();
+          }
           form.setValue('documentContent', content, { shouldValidate: true });
-        };
-        reader.readAsText(file);
+        } catch (error) {
+          console.error('Error processing file:', error);
+          onAnalysisError('Failed to read or parse the file.');
+        } finally {
+          // A little trick to ensure the button state updates correctly
+          // We don't want the main analyzing state, just loading for file read
+          if (!isAnalyzing) { 
+            onAnalysisStart();
+            setTimeout(() => onAnalysisError(''), 10);
+          }
+        }
       }
     },
-    [form]
+    [form, onAnalysisStart, onAnalysisError, isAnalyzing]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/plain': ['.txt'],
+      'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
   });
@@ -97,6 +129,7 @@ export function DocSetup({
   }
 
   const fileName = form.watch('fileName');
+  const documentContent = form.watch('documentContent');
 
   return (
     <Card className="w-full shadow-lg">
@@ -139,13 +172,13 @@ export function DocSetup({
                         <p className="text-center text-sm text-muted-foreground">
                           {isDragActive
                             ? 'Drop the file here...'
-                            : "Drag & drop a .txt file here, or click to select"}
+                            : "Drag & drop a .txt or .pdf file here, or click to select"}
                         </p>
                       </div>
                     )}
                   </FormControl>
                   <FormDescription>
-                    Upload a plain text file for analysis.
+                    Upload a plain text or PDF file for analysis.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -174,7 +207,7 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isAnalyzing || !form.watch('documentContent')} className="w-full">
+            <Button type="submit" disabled={isAnalyzing || !documentContent} className="w-full">
               {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               {isAnalyzing ? 'Analyzing...' : 'Analyze Document'}
             </Button>
