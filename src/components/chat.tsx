@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { getAnswer } from '@/app/actions';
-import type { AnalysisResult } from '@/app/page';
+import type { AnalysisResult } from '@/app/chat/page';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {

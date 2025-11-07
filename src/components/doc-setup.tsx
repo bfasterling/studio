@@ -26,7 +26,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import type { AnalysisResult } from '@/app/page';
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -34,7 +33,10 @@ const getPdfJs = async () => {
   // HACK: This is a workaround to get the worker to load.
   if (typeof window !== 'undefined' && 'Worker' in window) {
     // @ts-ignore
-    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).toString();
   }
   return pdfjs;
 }
@@ -45,10 +47,12 @@ const formSchema = z.object({
   fileName: z.string().optional(),
 });
 
+export type DocSetupFormValues = z.infer<typeof formSchema>;
+
 type DocSetupProps = {
   isAnalyzing: boolean;
   onAnalysisStart: () => void;
-  onAnalysisComplete: (result: AnalysisResult) => void;
+  onAnalysisComplete: (result: DocSetupFormValues) => void;
   onAnalysisError: (error: string) => void;
 };
 

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DocSetup } from '@/components/doc-setup';
-import { Chat } from '@/components/chat';
 import { useToast } from '@/hooks/use-toast';
 import { LucideMessageSquare } from 'lucide-react';
+import { useState } from 'react';
 
 export type AnalysisResult = {
   documentContent: string;
@@ -12,21 +12,20 @@ export type AnalysisResult = {
 };
 
 export default function Home() {
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleAnalysisComplete = (result: AnalysisResult) => {
-    setAnalysisResult(result);
-    setIsAnalyzing(false);
-    toast({
-      title: "Documento Listo",
-      description: "Ahora puedes empezar a chatear con la IA.",
+    // Encode the data to be passed in the URL
+    const queryParams = new URLSearchParams({
+      documentContent: result.documentContent,
+      analysisInstructions: result.analysisInstructions,
     });
+    router.push(`/chat?${queryParams.toString()}`);
   };
 
   const handleAnalysisStart = () => {
-    setAnalysisResult(null);
     setIsAnalyzing(true);
   };
 
@@ -39,10 +38,6 @@ export default function Home() {
     setIsAnalyzing(false);
   };
 
-  const handleReset = () => {
-    setAnalysisResult(null);
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-3xl mx-auto">
@@ -53,16 +48,12 @@ export default function Home() {
           </h1>
         </header>
         <main className="transition-all duration-500">
-          {analysisResult === null ? (
-            <DocSetup
-              isAnalyzing={isAnalyzing}
-              onAnalysisStart={handleAnalysisStart}
-              onAnalysisComplete={handleAnalysisComplete}
-              onAnalysisError={handleAnalysisError}
-            />
-          ) : (
-            <Chat analysisContext={analysisResult} onReset={handleReset} />
-          )}
+          <DocSetup
+            isAnalyzing={isAnalyzing}
+            onAnalysisStart={handleAnalysisStart}
+            onAnalysisComplete={handleAnalysisComplete}
+            onAnalysisError={handleAnalysisError}
+          />
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">
