@@ -43,7 +43,7 @@ export default function Home() {
         <header className="flex items-center justify-center gap-3 mb-8">
           <LucideMessageSquare className="w-8 h-8 text-primary" />
           <h1 className="text-4xl font-bold tracking-tight text-center text-foreground font-headline">
-            DocuChat AI
+            XSIA
           </h1>
         </header>
         <main className="transition-all duration-500">

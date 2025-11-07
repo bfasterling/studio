@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'DocuChat AI',
+  title: 'XSIA',
   description: 'Chat with your documents using AI',
 };
 
