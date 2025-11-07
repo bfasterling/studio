@@ -6,21 +6,27 @@ import { Chat } from '@/components/chat';
 import { useToast } from '@/hooks/use-toast';
 import { LucideMessageSquare } from 'lucide-react';
 
+export type AnalysisResult = {
+  documentContent: string;
+  analysisInstructions: string;
+};
+
 export default function Home() {
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 
-  const handleAnalysisComplete = (result: string) => {
+  const handleAnalysisComplete = (result: AnalysisResult) => {
     setAnalysisResult(result);
     setIsAnalyzing(false);
     toast({
-      title: "Análisis Completo",
+      title: "Documento Listo",
       description: "Ahora puedes empezar a chatear con la IA.",
     });
   };
 
   const handleAnalysisStart = () => {
+    setAnalysisResult(null);
     setIsAnalyzing(true);
   };
 

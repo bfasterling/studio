@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { getAnswer } from '@/app/actions';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { AnalysisResult } from '@/app/page';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,7 +24,7 @@ type Message = {
 };
 
 type ChatProps = {
-  analysisContext: string;
+  analysisContext: AnalysisResult;
   onReset: () => void;
 };
 
@@ -56,7 +57,11 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
     setInput('');
     setIsLoading(true);
 
-    const result = await getAnswer(input, analysisContext);
+    const result = await getAnswer(
+      input,
+      analysisContext.documentContent,
+      analysisContext.analysisInstructions
+    );
     
     if (result.success && result.data) {
       const assistantMessage: Message = { role: 'assistant', content: result.data };

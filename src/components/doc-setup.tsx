@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { performAnalysis } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,13 +26,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import type * as PdfJs from 'pdfjs-dist';
+import type { AnalysisResult } from '@/app/page';
 
 // Set up the worker
 const getPdfJs = async () => {
   const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
-  // @ts-ignore
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  // HACK: This is a workaround to get the worker to load.
+  if (typeof window !== 'undefined' && 'Worker' in window) {
+    // @ts-ignore
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  }
   return pdfjs;
 }
 
@@ -46,7 +48,7 @@ const formSchema = z.object({
 type DocSetupProps = {
   isAnalyzing: boolean;
   onAnalysisStart: () => void;
-  onAnalysisComplete: (result: string) => void;
+  onAnalysisComplete: (result: AnalysisResult) => void;
   onAnalysisError: (error: string) => void;
 };
 
@@ -90,6 +92,7 @@ export function DocSetup({
       const file = acceptedFiles[0];
       if (file) {
         setIsReadingFile(true);
+        onAnalysisStart();
         form.setValue('fileName', file.name);
 
         try {
@@ -108,7 +111,7 @@ export function DocSetup({
         }
       }
     },
-    [form, onAnalysisError]
+    [form, onAnalysisError, onAnalysisStart]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -127,26 +130,30 @@ export function DocSetup({
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    onAnalysisStart();
-    const documents = [{ filename: values.fileName || 'uploaded-file.txt', content: values.documentContent }];
-    const result = await performAnalysis(documents, values.analysisInstructions);
-    if (result.success && result.data) {
-      onAnalysisComplete(result.data);
-    } else {
-      onAnalysisError(result.error || 'Ocurrió un error desconocido.');
+    if (!values.documentContent.trim()) {
+      onAnalysisError('El contenido del documento no puede estar vacío.');
+      return;
     }
+     if (!values.analysisInstructions.trim()) {
+        onAnalysisError('Las instrucciones de análisis no pueden estar vacías.');
+        return;
+    }
+    onAnalysisComplete({
+      documentContent: values.documentContent,
+      analysisInstructions: values.analysisInstructions,
+    });
   }
 
   const fileName = form.watch('fileName');
   const documentContent = form.watch('documentContent');
-  const isLoading = isAnalyzing || isReadingFile;
+  const isLoading = isReadingFile;
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
         <CardTitle>Configuración de Documento</CardTitle>
         <CardDescription>
-          Proporciona un documento e instrucciones de análisis para comenzar.
+          Proporciona un documento e instrucciones para que la IA sepa cómo comportarse.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -161,11 +168,11 @@ export function DocSetup({
                   <FormControl>
                     {fileName ? (
                       <div className="flex items-center justify-between p-3 rounded-md border border-input bg-background">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                          <span className="text-sm font-medium">{fileName}</span>
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">{fileName}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6" disabled={isLoading}>
+                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6 flex-shrink-0" disabled={isLoading}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -204,17 +211,17 @@ export function DocSetup({
               name="analysisInstructions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Instrucciones de Análisis</FormLabel>
+                  <FormLabel>Instrucciones de Comportamiento</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ej: 'Resume los hallazgos clave en cada documento.' o 'Extrae todos los nombres y direcciones.'"
+                      placeholder="Ej: 'Actúa como un experto en finanzas y solo responde preguntas sobre el documento.' o 'Resume los hallazgos clave.'"
                       className="resize-y"
                       {...field}
                       disabled={isLoading}
                     />
                   </FormControl>
                   <FormDescription>
-                    Indica a la IA cómo analizar el contenido proporcionado.
+                    Indica a la IA cómo debe comportarse y responder.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -224,7 +231,7 @@ export function DocSetup({
           <CardFooter>
             <Button type="submit" disabled={isLoading || !documentContent} className="w-full">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {isAnalyzing ? 'Analizando...' : isReadingFile ? 'Procesando...' : 'Analizar Documento'}
+              {isReadingFile ? 'Procesando...' : 'Iniciar Chat'}
             </Button>
           </CardFooter>
         </form>
