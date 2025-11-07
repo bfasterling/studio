@@ -2,8 +2,10 @@
 
 import {
   initializeFirebase,
-  FirebaseProvider,
-  type FirebaseProviderProps,
+} from '@/firebase';
+import { 
+    FirebaseContext,
+    type FirebaseContextValue,
 } from '@/firebase/provider';
 import { useState, useEffect } from 'react';
 
@@ -12,7 +14,7 @@ export function FirebaseClientProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [firebase, setFirebase] = useState<FirebaseProviderProps | null>(null);
+  const [firebase, setFirebase] = useState<FirebaseContextValue | null>(null);
 
   useEffect(() => {
     const apps = initializeFirebase();
@@ -24,5 +26,5 @@ export function FirebaseClientProvider({
     return null;
   }
 
-  return <FirebaseProvider {...firebase}>{children}</FirebaseProvider>;
+  return <FirebaseContext.Provider value={firebase}>{children}</FirebaseContext.Provider>;
 }

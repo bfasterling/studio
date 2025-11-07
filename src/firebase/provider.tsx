@@ -25,19 +25,12 @@ export interface FirebaseProviderProps extends FirebaseContextValue {
 
 // Create the provider component
 export function FirebaseProvider({
-  app,
-  firestore,
-  auth,
   children,
-}: FirebaseProviderProps) {
-  const value = useMemo(
-    () => ({ app, firestore, auth }),
-    [app, firestore, auth]
-  );
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <FirebaseContext.Provider value={value}>
-      <FirebaseClientProvider>{children}</FirebaseClientProvider>
-    </FirebaseContext.Provider>
+    <FirebaseClientProvider>{children}</FirebaseClientProvider>
   );
 }
 
@@ -53,3 +46,5 @@ export const useFirebase = () => {
 export const useFirebaseApp = () => useFirebase().app;
 export const useFirestore = () => useFirebase().firestore;
 export const useAuth = () => useFirebase().auth;
+
+export { FirebaseContext };
