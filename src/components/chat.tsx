@@ -121,7 +121,7 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
                 </div>
                 {message.role === 'user' && (
                   <Avatar className="w-8 h-8 border">
-                    <AvatarFallback><User className="w-4 h-4 text-accent" /></AvatarFallback>
+                    <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
                   </Avatar>
                 )}
               </div>

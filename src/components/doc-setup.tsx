@@ -27,10 +27,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import * as pdfjs from 'pdfjs-dist';
+import type * as PdfJs from 'pdfjs-dist';
 
 // Set up the worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+const getPdfJs = async () => {
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  return pdfjs;
+}
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
@@ -61,6 +65,7 @@ export function DocSetup({
   });
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
+    const pdfjs = await getPdfJs();
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument(arrayBuffer).promise;
     let textContent = '';
