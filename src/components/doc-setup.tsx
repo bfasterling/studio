@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { performAnalysis, parsePdf } from '@/app/actions';
+import { performAnalysis } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -28,6 +28,9 @@ import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import pdf from 'pdf-parse/lib/pdf-parse';
+
+global.structuredClone = (val: any) => JSON.parse(JSON.stringify(val));
 
 const formSchema = z.object({
   documentContent: z.string().min(1, 'Document content is required.'),
@@ -67,19 +70,21 @@ export function DocSetup({
 
         if (file.type === 'application/pdf') {
           setIsParsing(true);
-          const formData = new FormData();
-          formData.append('file', file);
-          const result = await parsePdf(formData);
-          setIsParsing(false);
-          if (result.success && result.data) {
-            form.setValue('documentContent', result.data, { shouldValidate: true });
-          } else {
+          try {
+            const fileBuffer = await file.arrayBuffer();
+            const pdfData = await pdf(Buffer.from(fileBuffer));
+            form.setValue('documentContent', pdfData.text, { shouldValidate: true });
+          } catch (error) {
+            console.error('PDF parsing error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
             toast({
               variant: 'destructive',
               title: 'PDF Parsing Failed',
-              description: result.error || 'Could not read content from PDF.',
+              description: `Could not read content from PDF: ${errorMessage}`,
             });
             clearFile();
+          } finally {
+            setIsParsing(false);
           }
         } else {
           const reader = new FileReader();

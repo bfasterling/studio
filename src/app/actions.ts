@@ -7,7 +7,6 @@ import {
 import {
   answerQuestionsBasedOnAnalyzedDocuments,
 } from '@/ai/flows/answer-questions-based-on-analyzed-documents';
-import pdf from 'pdf-parse';
 
 export async function performAnalysis(
   documents: { filename: string; content: string }[],
@@ -56,23 +55,5 @@ export async function getAnswer(
     console.error(e);
     const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
     return { success: false, error: `Failed to get an answer from the AI: ${errorMessage}` };
-  }
-}
-
-export async function parsePdf(formData: FormData): Promise<{ success: boolean; data?: string; error?: string }> {
-  try {
-    const file = formData.get('file') as File;
-    if (!file) {
-      return { success: false, error: 'No file uploaded.' };
-    }
-
-    const fileBuffer = await file.arrayBuffer();
-    const data = await pdf(Buffer.from(fileBuffer));
-
-    return { success: true, data: data.text };
-  } catch (e) {
-    console.error('PDF parsing error:', e);
-    const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-    return { success: false, error: `Failed to parse PDF: ${errorMessage}` };
   }
 }
