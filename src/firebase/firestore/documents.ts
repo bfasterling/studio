@@ -3,6 +3,8 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore';
@@ -37,6 +39,29 @@ export function saveDocument(
         operation: 'create',
         path: collectionRef.path,
         requestResourceData: data,
+      });
+      onError(contextualError);
+      errorEmitter.emit('permission-error', contextualError);
+    });
+}
+
+export function deleteDocument(
+  firestore: Firestore,
+  userId: string,
+  documentId: string,
+  onSuccess: () => void,
+  onError: (error: Error) => void
+) {
+  const docRef = doc(firestore, `users/${userId}/documents`, documentId);
+
+  deleteDoc(docRef)
+    .then(() => {
+      onSuccess();
+    })
+    .catch((error) => {
+      const contextualError = new FirestorePermissionError({
+        operation: 'delete',
+        path: docRef.path,
       });
       onError(contextualError);
       errorEmitter.emit('permission-error', contextualError);

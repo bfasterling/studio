@@ -1,19 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { DocSetup } from '@/components/doc-setup';
 import { useToast } from '@/hooks/use-toast';
-import { LucideMessageSquare } from 'lucide-react';
+import { LucideMessageSquare, Trash2, Loader2 } from 'lucide-react';
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
+import { deleteDocument as deleteDocumentFromDb } from '@/firebase/firestore/documents';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 export default function Home() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const documentsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -36,6 +50,36 @@ export default function Home() {
       description: errorMessage,
     });
   };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!user || !firestore) {
+      handleUploadError("No se pudo eliminar el documento. Usuario no autenticado.");
+      return;
+    }
+    setIsDeleting(documentId);
+    
+    deleteDocumentFromDb(
+      firestore,
+      user.uid,
+      documentId,
+      () => { // onSuccess
+        toast({
+          title: "Documento Eliminado",
+          description: "El documento ha sido eliminado correctamente.",
+        });
+        setIsDeleting(null);
+      },
+      (error) => { // onError
+         toast({
+          variant: "destructive",
+          title: "Error al Eliminar",
+          description: error.message || "No se pudo eliminar el documento.",
+        });
+        setIsDeleting(null);
+      }
+    );
+  };
+
 
   const isLoading = isUserLoading || isLoadingDocuments;
 
@@ -67,11 +111,34 @@ export default function Home() {
               )}
               <ul className="space-y-2">
                 {documents?.map((doc: any) => (
-                   <li key={doc.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                    <span className="font-medium">{doc.fileName}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : ''}
-                    </span>
+                   <li key={doc.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 group">
+                    <span className="font-medium truncate pr-4">{doc.fileName}</span>
+                    <div className='flex items-center gap-2'>
+                      <span className="text-sm text-muted-foreground">
+                        {doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toLocaleDateString() : ''}
+                      </span>
+                       <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover:opacity-100" disabled={!!isDeleting}>
+                            {isDeleting === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Esto eliminará permanentemente el documento <span className="font-semibold">{doc.fileName}</span> de la base de datos.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteDocument(doc.id)}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </li>
                 ))}
               </ul>
