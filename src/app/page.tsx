@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { DocSetup } from '@/components/doc-setup';
 import { useToast } from '@/hooks/use-toast';
 import { LucideMessageSquare } from 'lucide-react';
-import { useCollection } from '@/firebase';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export default function Home() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
-  const documentsQuery = firestore ? query(collection(firestore, 'documents'), orderBy('createdAt', 'desc')) : null;
+  const documentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'documents'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const { data: documents, isLoading } = useCollection(documentsQuery);
 
   const handleUploadSuccess = () => {
