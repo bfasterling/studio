@@ -28,7 +28,7 @@ import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-
+import { Progress } from '@/components/ui/progress';
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -61,7 +61,9 @@ export function DocSetup({
   onUploadSuccess,
   onUploadError,
 }: DocSetupProps) {
-  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isProcessingFile, setIsProcessingFile] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
   const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,9 +74,8 @@ export function DocSetup({
       fileName: '',
     },
   });
-  
 
-  const extractTextFromPdf = async (file: File): Promise<string> => {
+  const extractTextFromPdf = async (file: File, onProgress: (progress: number) => void): Promise<string> => {
     try {
       const pdfjs = await getPdfJs();
       const arrayBuffer = await file.arrayBuffer();
@@ -84,6 +85,7 @@ export function DocSetup({
         const page = await pdf.getPage(i);
         const text = await page.getTextContent();
         textContent += text.items.map((item: any) => item.str).join(' ');
+        onProgress(Math.round((i / pdf.numPages) * 100));
       }
       return textContent;
     } catch (error) {
@@ -96,22 +98,39 @@ export function DocSetup({
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (file) {
-        setIsProcessing(true);
+        setIsProcessingFile(true);
+        setUploadProgress(0);
         form.setValue('fileName', file.name, { shouldValidate: true });
 
         try {
           let content = '';
           if (file.type === 'application/pdf') {
-            content = await extractTextFromPdf(file);
+            content = await extractTextFromPdf(file, setUploadProgress);
           } else {
-            content = await file.text();
+             // For text files, we can simulate progress
+            const reader = new FileReader();
+            reader.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const progress = Math.round((event.loaded / event.total) * 100);
+                setUploadProgress(progress);
+              }
+            };
+            reader.onload = (event) => {
+                form.setValue('documentContent', event.target?.result as string, { shouldValidate: true });
+                setUploadProgress(100);
+            }
+            reader.readAsText(file);
+
           }
-          form.setValue('documentContent', content, { shouldValidate: true });
+          if(file.type !== 'application/pdf') {
+             form.setValue('documentContent', content, { shouldValidate: true });
+          }
         } catch (error: any) {
           console.error('Error procesando archivo:', error);
           onUploadError(error.message || 'No se pudo leer o procesar el archivo.');
+          clearFile();
         } finally {
-          setIsProcessing(false);
+          setIsProcessingFile(false);
         }
       }
     },
@@ -125,11 +144,12 @@ export function DocSetup({
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
-    disabled: isProcessing,
+    disabled: isProcessingFile || isSaving,
   });
 
   const clearFile = () => {
     form.reset();
+    setUploadProgress(0);
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -138,7 +158,7 @@ export function DocSetup({
         return;
     }
 
-    setIsProcessing(true);
+    setIsSaving(true);
 
     try {
         await addDoc(collection(firestore, 'documents'), {
@@ -146,17 +166,18 @@ export function DocSetup({
             createdAt: serverTimestamp(),
         });
         onUploadSuccess();
-        form.reset();
+        clearFile();
     } catch (error: any) {
         console.error("Error guardando documento: ", error);
         onUploadError(error.message || "No se pudo guardar el documento.");
     } finally {
-        setIsProcessing(false);
+        setIsSaving(false);
     }
   }
 
   const fileName = form.watch('fileName');
   const documentContent = form.watch('documentContent');
+  const isProcessing = isProcessingFile || isSaving;
 
   return (
     <Card className="w-full shadow-lg">
@@ -177,14 +198,22 @@ export function DocSetup({
                   <FormLabel>Documento</FormLabel>
                   <FormControl>
                     {fileName ? (
-                      <div className="flex items-center justify-between p-3 rounded-md border border-input bg-background">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm font-medium truncate">{fileName}</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 rounded-md border border-input bg-background">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm font-medium truncate">{fileName}</span>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6 flex-shrink-0" disabled={isProcessing}>
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={clearFile} className="h-6 w-6 flex-shrink-0" disabled={isProcessing}>
-                          <X className="h-4 w-4" />
-                        </Button>
+                        {(isProcessingFile || uploadProgress > 0 && uploadProgress < 100) && (
+                            <div className="flex items-center gap-2">
+                               <Progress value={uploadProgress} className="w-full" />
+                               <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                            </div>
+                        )}
                       </div>
                     ) : (
                       <div
@@ -192,17 +221,17 @@ export function DocSetup({
                         className={cn(
                           'flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-md cursor-pointer transition-colors',
                           isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50',
-                          (isProcessing) && 'cursor-not-allowed opacity-50'
+                          isProcessing && 'cursor-not-allowed opacity-50'
                         )}
                       >
                         <input {...getInputProps()} />
-                        {isProcessing ? (
+                        {isProcessingFile ? (
                            <Loader2 className="h-10 w-10 text-muted-foreground mb-2 animate-spin" />
                         ) : (
                           <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
                         )}
                         <p className="text-center text-sm text-muted-foreground">
-                          {isProcessing ? 'Procesando archivo...' : isDragActive
+                          {isProcessingFile ? 'Procesando archivo...' : isDragActive
                             ? 'Suelta el archivo aquí...'
                             : "Arrastra y suelta un archivo .txt o .pdf aquí, o haz clic para seleccionar"}
                         </p>
@@ -240,8 +269,8 @@ export function DocSetup({
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={isProcessing || !documentContent} className="w-full">
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {isProcessing ? 'Guardando...' : 'Guardar Documento'}
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isSaving ? 'Guardando...' : 'Guardar Documento'}
             </Button>
           </CardFooter>
         </form>
