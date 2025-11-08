@@ -94,6 +94,26 @@ export function DocSetup({
     }
   };
 
+  const extractTextFromTxt = (file: File, onProgress: (progress: number) => void): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const progress = Math.round((event.loaded / event.total) * 100);
+                onProgress(progress);
+            }
+        };
+        reader.onload = (event) => {
+            onProgress(100);
+            resolve(event.target?.result as string);
+        };
+        reader.onerror = (error) => {
+            reject(new Error("No se pudo leer el archivo de texto."));
+        };
+        reader.readAsText(file);
+    });
+  }
+
   const onDrop = React.useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
@@ -107,24 +127,9 @@ export function DocSetup({
           if (file.type === 'application/pdf') {
             content = await extractTextFromPdf(file, setUploadProgress);
           } else {
-             // For text files, we can simulate progress
-            const reader = new FileReader();
-            reader.onprogress = (event) => {
-              if (event.lengthComputable) {
-                const progress = Math.round((event.loaded / event.total) * 100);
-                setUploadProgress(progress);
-              }
-            };
-            reader.onload = (event) => {
-                form.setValue('documentContent', event.target?.result as string, { shouldValidate: true });
-                setUploadProgress(100);
-            }
-            reader.readAsText(file);
-
+            content = await extractTextFromTxt(file, setUploadProgress);
           }
-          if(file.type !== 'application/pdf') {
-             form.setValue('documentContent', content, { shouldValidate: true });
-          }
+          form.setValue('documentContent', content, { shouldValidate: true });
         } catch (error: any) {
           console.error('Error procesando archivo:', error);
           onUploadError(error.message || 'No se pudo leer o procesar el archivo.');
@@ -208,7 +213,7 @@ export function DocSetup({
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        {(isProcessingFile || uploadProgress > 0 && uploadProgress < 100) && (
+                        {(isProcessingFile || (uploadProgress > 0 && uploadProgress < 100)) && (
                             <div className="flex items-center gap-2">
                                <Progress value={uploadProgress} className="w-full" />
                                <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
