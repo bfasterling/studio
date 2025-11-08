@@ -72,7 +72,7 @@ function ChatPage() {
           </h1>
         </header>
         <main>
-          <ChatComponent analysisContext={analysisContext} onReset={handleReset} />
+          <ChatComponent analysisContext={analysisContext} />
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">

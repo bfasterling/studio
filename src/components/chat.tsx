@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Bot, Loader2, Send, User, RotateCcw } from 'lucide-react';
+import { Bot, Loader2, Send, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Message = {
@@ -25,10 +25,9 @@ type Message = {
 
 type ChatProps = {
   analysisContext: AnalysisResult;
-  onReset: () => void;
 };
 
-export function Chat({ analysisContext, onReset }: ChatProps) {
+export function Chat({ analysisContext }: ChatProps) {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -83,9 +82,6 @@ export function Chat({ analysisContext, onReset }: ChatProps) {
     <Card className="w-full h-[70vh] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Chatea con tus Documentos</CardTitle>
-        <Button variant="ghost" size="icon" onClick={onReset} aria-label="Iniciar Nuevo Análisis">
-          <RotateCcw className="h-4 w-4" />
-        </Button>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
