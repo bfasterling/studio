@@ -1,40 +1,229 @@
 {
   "entities": {
     "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Document",
-      "description": "Represents an uploaded document with its content and analysis instructions.",
       "type": "object",
+      "description": "Represents a document uploaded to the system for analysis.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
         "fileName": {
           "type": "string",
-          "description": "The name of the uploaded file."
+          "description": "The original file name of the uploaded document."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The type of the uploaded document (e.g., 'pdf', 'text')."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date and time when the document was uploaded.",
+          "format": "date-time"
         },
         "content": {
           "type": "string",
-          "description": "The extracted text content of the document."
-        },
-        "analysisInstructions": {
-          "type": "string",
-          "description": "Instructions for the AI on how to behave."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the document was created."
+          "description": "The textual content of the document, extracted for analysis."
         }
       },
-      "required": ["fileName", "content", "analysisInstructions", "createdAt"]
+      "required": [
+        "id",
+        "fileName",
+        "fileType",
+        "uploadDate",
+        "content"
+      ]
+    },
+    "AnalysisInstruction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AnalysisInstruction",
+      "type": "object",
+      "description": "Represents the instructions provided by the administrator for analyzing documents.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AnalysisInstruction entity."
+        },
+        "instructionText": {
+          "type": "string",
+          "description": "The text of the analysis instruction."
+        },
+        "creationDate": {
+          "type": "string",
+          "description": "The date and time when the analysis instruction was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "instructionText",
+        "creationDate"
+      ]
+    },
+    "DocumentAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DocumentAnalysis",
+      "type": "object",
+      "description": "Represents the result of analyzing a document based on specific instructions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DocumentAnalysis entity."
+        },
+        "documentId": {
+          "type": "string",
+          "description": "Reference to Document. (Relationship: Document 1:N DocumentAnalysis)"
+        },
+        "analysisInstructionId": {
+          "type": "string",
+          "description": "Reference to AnalysisInstruction. (Relationship: AnalysisInstruction 1:N DocumentAnalysis)"
+        },
+        "analysisResult": {
+          "type": "string",
+          "description": "The result of analyzing the document based on the provided instructions."
+        },
+        "analysisDate": {
+          "type": "string",
+          "description": "The date and time when the document analysis was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "analysisInstructionId",
+        "analysisResult",
+        "analysisDate"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a message in the conversation between the user and the AI chat agent.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatMessage entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The user id to identify which user generate the message"
+        },
+        "messageText": {
+          "type": "string",
+          "description": "The text content of the chat message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the message was sent.",
+          "format": "date-time"
+        },
+        "isUserMessage": {
+          "type": "boolean",
+          "description": "Indicates whether the message was sent by the user (true) or the AI agent (false)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "messageText",
+        "timestamp",
+        "isUserMessage"
+      ]
     }
   },
   "auth": {
-    "providers": []
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/documents/{documentId}": {
-      "schema": {
-        "$ref": "#/entities/Document"
+    "structure": [
+      {
+        "path": "/users/{userId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Stores user-uploaded documents.  Path-based ownership enforced via /users/{userId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who uploaded the document."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique ID of the document."
+            }
+          ]
+        }
       },
-      "description": "Stores all the uploaded documents."
-    }
+      {
+        "path": "/analysis_instructions/{analysisInstructionId}",
+        "definition": {
+          "entityName": "AnalysisInstruction",
+          "schema": {
+            "$ref": "#/backend/entities/AnalysisInstruction"
+          },
+          "description": "Stores analysis instructions provided by the administrator.",
+          "params": [
+            {
+              "name": "analysisInstructionId",
+              "description": "The unique ID of the analysis instruction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/documents/{documentId}/analyses/{analysisId}",
+        "definition": {
+          "entityName": "DocumentAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/DocumentAnalysis"
+          },
+          "description": "Stores the results of analyzing documents based on specific instructions. Path-based ownership enforced via /users/{userId}/documents/{documentId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user who owns the document."
+            },
+            {
+              "name": "documentId",
+              "description": "The ID of the document being analyzed."
+            },
+            {
+              "name": "analysisId",
+              "description": "The unique ID of the document analysis."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/chat_messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages for each user. Path-based ownership enforced via /users/{userId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user participating in the chat."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique ID of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the DocuChat AI application, prioritizing authorization independence, clarity, and scalability. User-uploaded documents, admin-defined analysis instructions, and the resulting document analyses are stored in separate collections. Chat messages are stored in a user-specific subcollection to maintain a secure and organized structure. \n\n**Authorization Independence:** Each document analysis is performed based on uploaded documents and admin analysis instruction.\n\n*   The `DocumentAnalysis` includes denormalized `documentId` and `analysisInstructionId` to easily access the document and analysis instruction information.\n*   Chat messages are stored in a user-specific subcollection, which provides path-based ownership, eliminating the need for complex authorization logic.\n\n**QAPs (Rules are not Filters):**\n\n*   Segregation of user data (documents, chat messages) under `/users/{userId}` ensures that listing operations are secure and efficient, as rules can be scoped to the specific user.\n*   Administrative analysis instructions are stored in a separate collection, `/analysis_instructions`, allowing for distinct access controls. This segregation ensures that listing analysis instructions does not expose sensitive user data.\n\nThis structure facilitates simple and robust security rules by eliminating hierarchical authorization dependencies and enabling secure `list` operations."
   }
 }
