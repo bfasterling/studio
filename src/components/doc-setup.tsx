@@ -171,7 +171,6 @@ export function DocSetup({
       analysisInstructions: values.analysisInstructions,
     };
     
-    // Using the dedicated service function with proper error handling
     saveDocument(
       firestore,
       docData,
@@ -223,7 +222,7 @@ export function DocSetup({
                         </div>
                         {(isProcessingFile || (uploadProgress > 0 && uploadProgress < 100)) && (
                             <div className="flex items-center gap-2">
-                               <Progress value={uploadProgress} className="w-full" />
+                               <Progress value={uploadProgress} className="w-full h-2" />
                                <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
                             </div>
                         )}
@@ -280,7 +279,12 @@ export function DocSetup({
               )}
             />
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col items-stretch gap-4">
+             {isSaving && (
+                 <div className="flex items-center gap-2 w-full">
+                    <Progress value={uploadProgress} className="w-full h-2 animate-pulse" />
+                 </div>
+            )}
             <Button type="submit" disabled={isProcessing || !documentContent} className="w-full">
               {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               {isSaving ? 'Guardando...' : 'Guardar Documento'}
