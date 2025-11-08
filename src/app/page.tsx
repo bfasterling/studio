@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { DocSetup } from '@/components/doc-setup';
 import { useToast } from '@/hooks/use-toast';
 import { LucideMessageSquare } from 'lucide-react';
@@ -8,7 +9,6 @@ import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 export default function Home() {
   const { toast } = useToast();
