@@ -144,18 +144,14 @@
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}/documents/{documentId}",
+        "path": "/documents/{documentId}",
         "definition": {
           "entityName": "Document",
           "schema": {
             "$ref": "#/backend/entities/Document"
           },
-          "description": "Stores user-uploaded documents.  Path-based ownership enforced via /users/{userId}.",
+          "description": "Stores all user-uploaded documents in a single global collection.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who uploaded the document."
-            },
             {
               "name": "documentId",
               "description": "The unique ID of the document."
@@ -180,18 +176,14 @@
         }
       },
       {
-        "path": "/users/{userId}/documents/{documentId}/analyses/{analysisId}",
+        "path": "/documents/{documentId}/analyses/{analysisId}",
         "definition": {
           "entityName": "DocumentAnalysis",
           "schema": {
             "$ref": "#/backend/entities/DocumentAnalysis"
           },
-          "description": "Stores the results of analyzing documents based on specific instructions. Path-based ownership enforced via /users/{userId}/documents/{documentId}.",
+          "description": "Stores the results of analyzing documents based on specific instructions.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who owns the document."
-            },
             {
               "name": "documentId",
               "description": "The ID of the document being analyzed."
@@ -204,18 +196,14 @@
         }
       },
       {
-        "path": "/users/{userId}/chat_messages/{messageId}",
+        "path": "/chat_messages/{messageId}",
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
             "$ref": "#/backend/entities/ChatMessage"
           },
-          "description": "Stores chat messages for each user. Path-based ownership enforced via /users/{userId}.",
+          "description": "Stores all chat messages in a single global collection.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user participating in the chat."
-            },
             {
               "name": "messageId",
               "description": "The unique ID of the chat message."
@@ -224,6 +212,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the DocuChat AI application, prioritizing authorization independence, clarity, and scalability. User-uploaded documents, admin-defined analysis instructions, and the resulting document analyses are stored in separate collections. Chat messages are stored in a user-specific subcollection to maintain a secure and organized structure. \n\n**Authorization Independence:** Each document analysis is performed based on uploaded documents and admin analysis instruction.\n\n*   The `DocumentAnalysis` includes denormalized `documentId` and `analysisInstructionId` to easily access the document and analysis instruction information.\n*   Chat messages are stored in a user-specific subcollection, which provides path-based ownership, eliminating the need for complex authorization logic.\n\n**QAPs (Rules are not Filters):**\n\n*   Segregation of user data (documents, chat messages) under `/users/{userId}` ensures that listing operations are secure and efficient, as rules can be scoped to the specific user.\n*   Administrative analysis instructions are stored in a separate collection, `/analysis_instructions`, allowing for distinct access controls. This segregation ensures that listing analysis instructions does not expose sensitive user data.\n\nThis structure facilitates simple and robust security rules by eliminating hierarchical authorization dependencies and enabling secure `list` operations."
+    "reasoning": "The Firestore structure is designed to support the DocuChat AI application as a shared knowledge base. All documents and chat messages are stored in global collections to be accessible by any user, promoting a collaborative environment. This removes the need for user-specific data paths. \n\n**Authorization Independence:** Documents and chat messages are in top-level collections (`/documents`, `/chat_messages`). Access is controlled globally for all authenticated users.\n\n**QAPs (Rules are not Filters):** Security rules will allow any authenticated user to read and write to the shared collections, which is efficient and secure for this public-access model."
   }
 }

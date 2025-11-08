@@ -30,9 +30,9 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const documentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, `users/${user.uid}/documents`), orderBy('createdAt', 'desc'));
-  }, [firestore, user?.uid]);
+    if (!firestore) return null;
+    return query(collection(firestore, `documents`), orderBy('createdAt', 'desc'));
+  }, [firestore]);
 
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
 
@@ -52,15 +52,14 @@ export default function Home() {
   };
 
   const handleDeleteDocument = async (documentId: string) => {
-    if (!user || !firestore) {
-      handleUploadError("No se pudo eliminar el documento. Usuario no autenticado.");
+    if (!firestore) {
+      handleUploadError("No se pudo eliminar el documento. Base de datos no disponible.");
       return;
     }
     setIsDeleting(documentId);
     
     deleteDocumentFromDb(
       firestore,
-      user.uid,
       documentId,
       () => { // onSuccess
         toast({

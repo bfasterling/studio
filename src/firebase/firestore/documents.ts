@@ -15,17 +15,15 @@ interface DocumentData {
   fileName: string;
   content: string;
   analysisInstructions: string;
-  userId: string;
 }
 
 export function saveDocument(
   firestore: Firestore,
-  userId: string,
   data: DocumentData,
   onSuccess: () => void,
   onError: (error: Error) => void
 ) {
-  const collectionRef = collection(firestore, `users/${userId}/documents`);
+  const collectionRef = collection(firestore, `documents`);
   
   addDoc(collectionRef, {
     ...data,
@@ -47,12 +45,11 @@ export function saveDocument(
 
 export function deleteDocument(
   firestore: Firestore,
-  userId: string,
   documentId: string,
   onSuccess: () => void,
   onError: (error: Error) => void
 ) {
-  const docRef = doc(firestore, `users/${userId}/documents`, documentId);
+  const docRef = doc(firestore, `documents`, documentId);
 
   deleteDoc(docRef)
     .then(() => {

@@ -1,111 +1,67 @@
 /**
- * @fileOverview Firestore Security Rules for DocuChat AI.
+ * @fileOverview Firestore Security Rules for DocuChat AI (Shared Model).
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user-generated content (documents, chat messages, and document analyses).
- * Administrative analysis instructions are stored separately and publicly readable.
+ * This ruleset treats the application as a shared, public knowledge base.
+ * Any authenticated user (including anonymous users) can read and write documents.
+ * This facilitates a collaborative environment where all uploaded content is accessible to everyone.
  *
  * Data Structure:
- * - /users/{userId}/documents/{documentId}: User-uploaded documents, owned by the user specified in the path.
- * - /analysis_instructions/{analysisInstructionId}: Analysis instructions created by administrators (publicly readable).
- * - /users/{userId}/documents/{documentId}/analyses/{analysisId}: Document analysis results, owned by the user who owns the parent document.
- * - /users/{userId}/chat_messages/{messageId}: Chat messages, owned by the user specified in the path.
+ * - /documents/{documentId}: A global collection for all uploaded documents.
+ * - /analysis_instructions/{analysisInstructionId}: Admin-created instructions (publicly readable).
+ * - /documents/{documentId}/analyses/{analysisId}: Analysis results for a given document.
+ * - /chat_messages/{messageId}: A global collection for all chat messages.
  *
  * Key Security Decisions:
- * - Users can only access their own documents, analyses, and chat messages.
- * - Analysis instructions are publicly readable but not writable by users.
- * - User listing is disallowed for all collections containing private data.
- * - All write operations require a verified user identity (request.auth != null).
- *
- * Denormalization for Authorization:
- * - The `DocumentAnalysis` entity includes `documentId` and `analysisInstructionId` to simplify access and authorization checks without requiring additional `get()` calls.
+ * - Any authenticated user can create, read, update, or delete any document.
+ * - Any authenticated user can read, create, update, or delete chat messages.
+ * - This open model is intentional for a shared-knowledge-base application.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user-uploaded documents under the /users/{userId}/documents/{documentId} path.
-     * @path /users/{userId}/documents/{documentId}
-     * @allow (create) User 'user_abc' can create a new document with document.id == 'user_abc'.
-     * @allow (get) User 'user_abc' can get document 'doc1' if they own it (path: /users/user_abc/documents/doc1).
-     * @allow (list) User 'user_abc' can list their own documents (path: /users/user_abc/documents).
-     * @allow (update) User 'user_abc' can update document 'doc1' if they own it (path: /users/user_abc/documents/doc1).
-     * @allow (delete) User 'user_abc' can delete document 'doc1' if they own it (path: /users/user_abc/documents/doc1).
-     * @deny (create) User 'user_xyz' cannot create a document under /users/user_abc/documents/doc1.
-     * @deny (get) User 'user_xyz' cannot get document 'doc1' under /users/user_abc/documents/doc1.
-     * @deny (list) User 'user_xyz' cannot list documents under /users/user_abc/documents.
-     * @deny (update) User 'user_xyz' cannot update document 'doc1' under /users/user_abc/documents/doc1.
-     * @deny (delete) User 'user_xyz' cannot delete document 'doc1' under /users/user_abc/documents/doc1.
-     * @principle Enforces document ownership for all read and write operations.
+     * @description Protects user-uploaded documents under the /documents/{documentId} path.
+     * Allows any authenticated user to perform read and write operations.
+     * @path /documents/{documentId}
+     * @allow (read, write) Any authenticated user can create, read, update, or delete documents.
+     * @principle Enables a shared, collaborative document repository.
      */
-    match /users/{userId}/documents/{documentId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+    match /documents/{documentId} {
+      allow read, write: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to analysis instructions under the /analysis_instructions/{analysisInstructionId} path. Write access is denied to all users.
+     * @description Allows public read access to analysis instructions.
      * @path /analysis_instructions/{analysisInstructionId}
-     * @allow (get) Any user can get an analysis instruction.
-     * @allow (list) Any user can list analysis instructions.
-     * @deny (create) No user can create an analysis instruction via client.
-     * @deny (update) No user can update an analysis instruction.
-     * @deny (delete) No user can delete an analysis instruction.
-     * @principle Allows public read access while restricting write access.
+     * @allow (get, list) Any user can read instructions.
+     * @deny (write) No client can write to instructions.
+     * @principle Makes analysis instructions globally available while restricting modification.
      */
     match /analysis_instructions/{analysisInstructionId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow write: if false;
     }
 
     /**
-     * @description Protects document analysis results under the /users/{userId}/documents/{documentId}/analyses/{analysisId} path.
-     * @path /users/{userId}/documents/{documentId}/analyses/{analysisId}
-     * @allow (create) User 'user_abc' can create an analysis result under their own document.
-     * @allow (get) User 'user_abc' can get an analysis result if they own the parent document.
-     * @allow (list) User 'user_abc' can list analysis results under their own document.
-     * @allow (update) User 'user_abc' can update an analysis result if they own the parent document.
-     * @allow (delete) User 'user_abc' can delete an analysis result if they own the parent document.
-     * @deny (create) User 'user_xyz' cannot create an analysis result under /users/user_abc/documents/doc1.
-     * @deny (get) User 'user_xyz' cannot get an analysis result under /users/user_abc/documents/doc1.
-     * @deny (list) User 'user_xyz' cannot list analysis results under /users/user_abc/documents/doc1.
-     * @deny (update) User 'user_xyz' cannot update an analysis result under /users/user_abc/documents/doc1.
-     * @deny (delete) User 'user_xyz' cannot delete an analysis result under /users/user_abc/documents/doc1.
-     * @principle Enforces document ownership for analysis results.
+     * @description Protects document analysis results.
+     * @path /documents/{documentId}/analyses/{analysisId}
+     * @allow (read, write) Any authenticated user can manage analyses for any document.
+     * @principle Allows collaborative analysis on the shared documents.
      */
-    match /users/{userId}/documents/{documentId}/analyses/{analysisId} {
-      allow get: if isSignedIn() && isDocumentOwner(userId, documentId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isDocumentOwner(userId, documentId);
-      allow update: if isSignedIn() && isExistingDocumentOwner(userId, documentId);
-      allow delete: if isSignedIn() && isExistingDocumentOwner(userId, documentId);
+    match /documents/{documentId}/analyses/{analysisId} {
+      allow read, write: if isSignedIn();
     }
 
     /**
-     * @description Protects chat messages under the /users/{userId}/chat_messages/{messageId} path.
-     * @path /users/{userId}/chat_messages/{messageId}
-     * @allow (create) User 'user_abc' can create a chat message.
-     * @allow (get) User 'user_abc' can get their own chat message.
-     * @allow (list) User 'user_abc' can list their own chat messages.
-     * @allow (update) User 'user_abc' can update their own chat message.
-     * @allow (delete) User 'user_abc' can delete their own chat message.
-     * @deny (create) User 'user_xyz' cannot create a chat message under /users/user_abc/chat_messages.
-     * @deny (get) User 'user_xyz' cannot get a chat message under /users/user_abc/chat_messages.
-     * @deny (list) User 'user_xyz' cannot list chat messages under /users/user_abc/chat_messages.
-     * @deny (update) User 'user_xyz' cannot update a chat message under /users/user_abc/chat_messages.
-     * @deny (delete) User 'user_xyz' cannot delete a chat message under /users/user_abc/chat_messages.
-     * @principle Enforces document ownership for chat messages.
+     * @description Protects chat messages under the /chat_messages/{messageId} path.
+     * @path /chat_messages/{messageId}
+     * @allow (read, write) Any authenticated user can read or post messages to the shared chat.
+     * @principle Enables a global chat accessible to all users.
      */
-    match /users/{userId}/chat_messages/{messageId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+    match /chat_messages/{messageId} {
+      allow read, write: if isSignedIn();
     }
 
     // --- Helper Functions ---
@@ -116,44 +72,6 @@ service cloud.firestore {
      */
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the resource based on the userId.
-     * @param {string} userId The user ID from the path.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the document and if the document exists.
-     * @param {string} userId The user ID from the path.
-     * @return {boolean} True if the user is the owner and the document exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the document given the documentId in path.
-     * @param {string} userId The user ID from the path.
-     * @param {string} documentId The document ID from the path.
-     * @return {boolean} True if the user is the owner of the document, false otherwise.
-     */
-    function isDocumentOwner(userId, documentId) {
-      return request.auth.uid == userId && exists(/databases/$(database)/documents/users/$(userId)/documents/$(documentId));
-    }
-
-    /**
-     * @description Checks if the user is the owner of the document and if the document exists.
-     * @param {string} userId The user ID from the path.
-     * @param {string} documentId The document ID from the path.
-     * @return {boolean} True if the user is the owner and the document exists, false otherwise.
-     */
-    function isExistingDocumentOwner(userId, documentId) {
-      return isDocumentOwner(userId, documentId) && resource != null;
     }
   }
 }
