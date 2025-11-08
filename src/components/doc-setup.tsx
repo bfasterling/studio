@@ -27,8 +27,8 @@ import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
+import { saveDocument } from '@/firebase/firestore/documents';
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -165,19 +165,27 @@ export function DocSetup({
 
     setIsSaving(true);
 
-    try {
-        await addDoc(collection(firestore, 'documents'), {
-            ...values,
-            createdAt: serverTimestamp(),
-        });
+    const docData = {
+      fileName: values.fileName,
+      content: values.documentContent,
+      analysisInstructions: values.analysisInstructions,
+    };
+    
+    // Using the dedicated service function with proper error handling
+    saveDocument(
+      firestore,
+      docData,
+      () => { // onSuccess callback
         onUploadSuccess();
         clearFile();
-    } catch (error: any) {
+        setIsSaving(false);
+      },
+      (error) => { // onError callback
         console.error("Error guardando documento: ", error);
         onUploadError(error.message || "No se pudo guardar el documento.");
-    } finally {
         setIsSaving(false);
-    }
+      }
+    );
   }
 
   const fileName = form.watch('fileName');

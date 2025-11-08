@@ -12,3 +12,4 @@ export function initializeFirebase() {
 
 export * from './provider';
 export * from './use-collection';
+export * from './firestore/documents';
