@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Chat as ChatComponent } from '@/components/chat';
 import { LucideMessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
@@ -17,9 +17,15 @@ export type AnalysisResult = {
 function ChatPage() {
   const router = useRouter();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
-  const documentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'documents')) : null, [firestore]);
-  const { data: documents, isLoading } = useCollection(documentsQuery);
+  const documentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(collection(firestore, `users/${user.uid}/documents`));
+  }, [firestore, user?.uid]);
+  
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
+  const isLoading = isUserLoading || isLoadingDocuments;
 
   const handleReset = () => {
     router.push('/');

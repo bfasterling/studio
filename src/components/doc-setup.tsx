@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, UploadCloud, FileText, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { Progress } from '@/components/ui/progress';
 import { saveDocument } from '@/firebase/firestore/documents';
 
@@ -65,6 +65,7 @@ export function DocSetup({
   const [isSaving, setIsSaving] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -162,6 +163,10 @@ export function DocSetup({
         onUploadError("La base de datos no está lista. Inténtalo de nuevo.");
         return;
     }
+    if (!user) {
+      onUploadError("Debes estar autenticado para guardar documentos.");
+      return;
+    }
 
     setIsSaving(true);
 
@@ -169,10 +174,12 @@ export function DocSetup({
       fileName: values.fileName,
       content: values.documentContent,
       analysisInstructions: values.analysisInstructions,
+      userId: user.uid,
     };
     
     saveDocument(
       firestore,
+      user.uid,
       docData,
       () => { // onSuccess callback
         onUploadSuccess();

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DocSetup } from '@/components/doc-setup';
 import { useToast } from '@/hooks/use-toast';
 import { LucideMessageSquare } from 'lucide-react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,14 @@ import Link from 'next/link';
 export default function Home() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
-  const documentsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'documents'), orderBy('createdAt', 'desc')) : null, [firestore]);
-  const { data: documents, isLoading } = useCollection(documentsQuery);
+  const documentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(collection(firestore, `users/${user.uid}/documents`), orderBy('createdAt', 'desc'));
+  }, [firestore, user?.uid]);
+
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
 
   const handleUploadSuccess = () => {
     toast({
@@ -31,6 +36,8 @@ export default function Home() {
       description: errorMessage,
     });
   };
+
+  const isLoading = isUserLoading || isLoadingDocuments;
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4">
@@ -55,7 +62,7 @@ export default function Home() {
             </div>
             <div className="border rounded-lg p-4">
               {isLoading && <p>Cargando documentos...</p>}
-              {!isLoading && documents && documents.length === 0 && (
+              {!isLoading && (!documents || documents.length === 0) && (
                 <p className="text-muted-foreground text-center">Aún no se han cargado documentos.</p>
               )}
               <ul className="space-y-2">
