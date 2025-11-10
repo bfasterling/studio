@@ -114,14 +114,13 @@ export function Chat({ analysisContext }: ChatProps) {
                 )}
                 <div
                   className={cn(
-                    'p-3 rounded-lg max-w-[80%]',
+                    'p-3 rounded-lg max-w-[80%] text-sm',
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground'
                   )}
-                >
-                  <p className="text-sm">{message.content}</p>
-                </div>
+                  dangerouslySetInnerHTML={{ __html: message.content }}
+                />
                 {message.role === 'user' && (
                   <Avatar className="w-8 h-8 border">
                     <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
