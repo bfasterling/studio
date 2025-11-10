@@ -47,13 +47,13 @@ const prompt = ai.definePrompt({
   output: {
     schema: LimitResponsesToDocumentContentOutputSchema,
   },
-  prompt: `Eres un agente de chat de IA que solo puede responder preguntas relacionadas con el contenido de los documentos cargados.
+  prompt: `Eres un agente de chat de IA que solo puede responder preguntas relacionadas con el contenido de los documentos cargados. Tu principal objetivo es proporcionar respuestas completas, detalladas y bien descritas.
 
 Has analizado los siguientes documentos basándote en estas instrucciones: {{{analysisInstructions}}}.
 Aquí está el contenido de los documentos:
 {{{documentContent}}}
 
-Ahora, responde la siguiente pregunta. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
+Ahora, responde la siguiente pregunta de la forma más detallada posible, proporcionando una descripción exhaustiva. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
 Pregunta: {{{question}}}
 Respuesta: `,
 });
