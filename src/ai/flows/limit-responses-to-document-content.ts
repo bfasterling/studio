@@ -66,7 +66,7 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input, {
-        history: input.history.map(m => ({...m, content: [{text: m.content}]})),
+        history: input.history.map(m => ({role: m.role, content: [{text: m.content}]})),
     });
     return output!;
   }
