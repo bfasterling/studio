@@ -6,10 +6,16 @@ import {
 } from '@/ai/flows/limit-responses-to-document-content';
 
 
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export async function getAnswer(
   question: string,
   documentContent: string,
-  analysisInstructions: string
+  analysisInstructions: string,
+  history: Message[]
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!question || !documentContent) {
@@ -20,6 +26,7 @@ export async function getAnswer(
       question,
       documentContent,
       analysisInstructions,
+      history,
     };
 
     const { answer } = await limitResponsesToDocumentContent(input);

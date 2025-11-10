@@ -52,14 +52,16 @@ export function Chat({ analysisContext }: ChatProps) {
     if (!input.trim()) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     const result = await getAnswer(
       input,
       analysisContext.documentContent,
-      analysisContext.analysisInstructions
+      analysisContext.analysisInstructions,
+      newMessages,
     );
     
     if (result.success && result.data) {

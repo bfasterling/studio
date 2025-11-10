@@ -11,10 +11,16 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+
 const LimitResponsesToDocumentContentInputSchema = z.object({
   question: z.string().describe('The user question.'),
   documentContent: z.string().describe('The content of the uploaded documents.'),
   analysisInstructions: z.string().describe('The analysis instructions provided by the administrator.'),
+  history: z.array(MessageSchema).describe('The conversation history.'),
 });
 export type LimitResponsesToDocumentContentInput = z.infer<
   typeof LimitResponsesToDocumentContentInputSchema
@@ -59,7 +65,9 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
     outputSchema: LimitResponsesToDocumentContentOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, {
+        history: input.history.map(m => ({...m, content: [{text: m.content}]})),
+    });
     return output!;
   }
 );
