@@ -51,7 +51,7 @@ const prompt = ai.definePrompt({
 
 Para mejorar la presentación de tus respuestas, utiliza etiquetas HTML. Sigue estas directrices:
 - Para listas, usa viñetas con las etiquetas <ul> y <li>.
-- Para datos tabulares, usa tablas con etiquetas <table>, <thead>, <tbody>, <tr>, <th> y <td>. Asegúrate de que la tabla tenga bordes para una mejor legibilidad, usando un estilo como '<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">'.
+- Para datos tabulares, usa tablas con etiquetas <table>, <thead>, <tbody>, <tr>, <th> y <td>. Asegúrate de que la tabla y todas sus celdas (th, td) tengan bordes delgados para una mejor legibilidad, usando un estilo como '<table style="border: 1px solid #cccccc; border-collapse: collapse; width: 100%; font-size: 0.9em;">' y '<th style="border: 1px solid #cccccc; padding: 5px;">'.
 - Para resaltar texto importante, utiliza la etiqueta <strong>.
 
 Has analizado los siguientes documentos basándote en estas instrucciones: {{{analysisInstructions}}}.
