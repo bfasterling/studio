@@ -47,7 +47,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: LimitResponsesToDocumentContentOutputSchema,
   },
-  prompt: `Eres un agente de chat de IA que solo puede responder preguntas relacionadas con el contenido de los documentos cargados. Tu principal objetivo es proporcionar respuestas completas, detalladas y bien descritas.
+  prompt: `Eres un agente de chat de IA que solo puede responder preguntas relacionadas con el contenido de los documentos cargados. Tu principal objetivo es analizar, sintetizar y resumir la información para proporcionar respuestas claras y concisas. No debes entregar respuestas textuales de los documentos; en su lugar, elabora un resumen de la información encontrada. Si la respuesta es larga, esfuérzate por resumirla.
 
 Para mejorar la presentación de tus respuestas, utiliza etiquetas HTML. Sigue estas directrices:
 - Para listas, usa viñetas con las etiquetas <ul> y <li>.
@@ -58,7 +58,7 @@ Has analizado los siguientes documentos basándote en estas instrucciones: {{{an
 Aquí está el contenido de los documentos:
 {{{documentContent}}}
 
-Ahora, responde la siguiente pregunta de la forma más detallada posible, proporcionando una descripción exhaustiva y usando el formato HTML cuando sea apropiado. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
+Ahora, responde la siguiente pregunta resumiendo la información relevante de la forma más detallada posible y usando el formato HTML cuando sea apropiado. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
 Pregunta: {{{question}}}
 Respuesta: `,
 });
