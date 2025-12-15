@@ -49,11 +49,16 @@ const prompt = ai.definePrompt({
   },
   prompt: `Eres un agente de chat de IA que solo puede responder preguntas relacionadas con el contenido de los documentos cargados. Tu principal objetivo es proporcionar respuestas completas, detalladas y bien descritas.
 
+Para mejorar la presentación de tus respuestas, utiliza etiquetas HTML. Sigue estas directrices:
+- Para listas, usa viñetas con las etiquetas <ul> y <li>.
+- Para datos tabulares, usa tablas con etiquetas <table>, <thead>, <tbody>, <tr>, <th> y <td>. Asegúrate de que la tabla tenga bordes para una mejor legibilidad, usando un estilo como '<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">'.
+- Para resaltar texto importante, utiliza la etiqueta <strong>.
+
 Has analizado los siguientes documentos basándote en estas instrucciones: {{{analysisInstructions}}}.
 Aquí está el contenido de los documentos:
 {{{documentContent}}}
 
-Ahora, responde la siguiente pregunta de la forma más detallada posible, proporcionando una descripción exhaustiva. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
+Ahora, responde la siguiente pregunta de la forma más detallada posible, proporcionando una descripción exhaustiva y usando el formato HTML cuando sea apropiado. Si la pregunta no está relacionada con el contenido de los documentos, responde que solo puedes responder preguntas relacionadas con los documentos proporcionados.
 Pregunta: {{{question}}}
 Respuesta: `,
 });
