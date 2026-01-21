@@ -30,6 +30,7 @@ import { useFirestore } from '@/firebase';
 import { Progress } from '@/components/ui/progress';
 import { saveDocument } from '@/firebase/firestore/documents';
 import { translateContent } from '@/app/actions';
+import { chunkText } from '@/lib/utils';
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -169,16 +170,28 @@ export function DocSetup({
 
     if (analysisInstructions.includes('traducir a español')) {
       setStatus('translating');
+      setUploadProgress(0);
       try {
-        const translationResult = await translateContent(values.documentContent, 'español');
-        if (translationResult.success && translationResult.data) {
-          contentToSave = translationResult.data;
-        } else {
-          throw new Error(translationResult.error || 'La traducción falló.');
+        const chunkSize = 10000; // Safe chunk size for the API
+        const chunks = chunkText(values.documentContent, chunkSize);
+        const translatedChunks: string[] = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const translationResult = await translateContent(chunk, 'español');
+          if (translationResult.success && translationResult.data) {
+            translatedChunks.push(translationResult.data);
+            // Update progress after each chunk is translated
+            setUploadProgress(Math.round(((i + 1) / chunks.length) * 100));
+          } else {
+            throw new Error(translationResult.error || `La traducción falló en el fragmento ${i + 1}.`);
+          }
         }
+        contentToSave = translatedChunks.join(' ');
       } catch (error: any) {
         onUploadError(error.message || 'Ocurrió un error durante la traducción.');
         setStatus('idle');
+        setUploadProgress(0);
         return;
       }
     }
@@ -203,6 +216,7 @@ export function DocSetup({
         console.error("Error guardando documento: ", error);
         onUploadError(error.message || "No se pudo guardar el documento.");
         setStatus('idle');
+        setUploadProgress(0);
       }
     );
   }
@@ -251,7 +265,7 @@ export function DocSetup({
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        {(isProcessingFile || (uploadProgress > 0 && uploadProgress < 100)) && (
+                        {(isProcessingFile || (uploadProgress > 0 && uploadProgress < 100 && status === 'idle')) && (
                             <div className="flex items-center gap-2">
                                <Progress value={uploadProgress} className="w-full h-2" />
                                <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
@@ -311,6 +325,12 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter className="flex-col items-stretch gap-4">
+             {status === 'translating' && (
+                <div className="flex items-center gap-2 w-full">
+                    <Progress value={uploadProgress} className="w-full h-2" />
+                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                </div>
+             )}
              {status === 'saving' && (
                  <div className="flex items-center gap-2 w-full">
                     <Progress value={uploadProgress} className="w-full h-2 animate-pulse" />
