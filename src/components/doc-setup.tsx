@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { Progress } from '@/components/ui/progress';
 import { saveDocument } from '@/firebase/firestore/documents';
+import { translateContent } from '@/app/actions';
 
 // Set up the worker
 const getPdfJs = async () => {
@@ -62,7 +63,7 @@ export function DocSetup({
   onUploadError,
 }: DocSetupProps) {
   const [isProcessingFile, setIsProcessingFile] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [status, setStatus] = React.useState<'idle' | 'translating' | 'saving'>('idle');
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const firestore = useFirestore();
 
@@ -149,7 +150,7 @@ export function DocSetup({
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
-    disabled: isProcessingFile || isSaving,
+    disabled: isProcessingFile || status !== 'idle',
   });
 
   const clearFile = () => {
@@ -163,11 +164,30 @@ export function DocSetup({
         return;
     }
 
-    setIsSaving(true);
+    let documentContent = values.documentContent;
+    const analysisInstructions = values.analysisInstructions.toLowerCase();
+
+    if (analysisInstructions.includes('traducir a español')) {
+      setStatus('translating');
+      try {
+        const translationResult = await translateContent(documentContent, 'español');
+        if (translationResult.success && translationResult.data) {
+          documentContent = translationResult.data;
+        } else {
+          throw new Error(translationResult.error || 'La traducción falló.');
+        }
+      } catch (error: any) {
+        onUploadError(error.message || 'Ocurrió un error durante la traducción.');
+        setStatus('idle');
+        return;
+      }
+    }
+
+    setStatus('saving');
 
     const docData = {
       fileName: values.fileName,
-      content: values.documentContent,
+      content: documentContent,
       analysisInstructions: values.analysisInstructions,
     };
     
@@ -177,19 +197,30 @@ export function DocSetup({
       () => { // onSuccess callback
         onUploadSuccess();
         clearFile();
-        setIsSaving(false);
+        setStatus('idle');
       },
       (error) => { // onError callback
         console.error("Error guardando documento: ", error);
         onUploadError(error.message || "No se pudo guardar el documento.");
-        setIsSaving(false);
+        setStatus('idle');
       }
     );
   }
 
   const fileName = form.watch('fileName');
   const documentContent = form.watch('documentContent');
-  const isProcessing = isProcessingFile || isSaving;
+  const isProcessing = isProcessingFile || status !== 'idle';
+
+  const getButtonText = () => {
+    switch (status) {
+      case 'translating':
+        return 'Traduciendo...';
+      case 'saving':
+        return 'Guardando...';
+      default:
+        return 'Guardar Documento';
+    }
+  };
 
   return (
     <Card className="w-full shadow-lg">
@@ -265,7 +296,7 @@ export function DocSetup({
                   <FormLabel>Instrucciones de Comportamiento</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ej: 'Actúa como un experto en finanzas y solo responde preguntas sobre el documento.' o 'Resume los hallazgos clave.'"
+                      placeholder="Ej: 'Actúa como un experto en finanzas y solo responde preguntas sobre el documento.' o 'Resume los hallazgos clave.' Si el documento está en otro idioma, escribe 'traducir a español'."
                       className="resize-y"
                       {...field}
                       disabled={isProcessing}
@@ -280,14 +311,14 @@ export function DocSetup({
             />
           </CardContent>
           <CardFooter className="flex-col items-stretch gap-4">
-             {isSaving && (
+             {status === 'saving' && (
                  <div className="flex items-center gap-2 w-full">
                     <Progress value={uploadProgress} className="w-full h-2 animate-pulse" />
                  </div>
             )}
             <Button type="submit" disabled={isProcessing || !documentContent} className="w-full">
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {isSaving ? 'Guardando...' : 'Guardar Documento'}
+              {status !== 'idle' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {getButtonText()}
             </Button>
           </CardFooter>
         </form>

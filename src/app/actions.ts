@@ -4,6 +4,7 @@ import {
   limitResponsesToDocumentContent,
   LimitResponsesToDocumentContentInput,
 } from '@/ai/flows/limit-responses-to-document-content';
+import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
 
 
 type Message = {
@@ -36,5 +37,29 @@ export async function getAnswer(
     console.error(e);
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     return { success: false, error: `No se pudo obtener una respuesta de la IA: ${errorMessage}` };
+  }
+}
+
+export async function translateContent(
+  text: string,
+  targetLanguage: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
+  try {
+    if (!text || !targetLanguage) {
+      return { success: false, error: 'El texto y el idioma de destino son obligatorios.' };
+    }
+    
+    const input: TranslateTextInput = {
+      text,
+      targetLanguage,
+    };
+
+    const { translatedText } = await translateText(input);
+    
+    return { success: true, data: translatedText };
+  } catch (e) {
+    console.error(e);
+    const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+    return { success: false, error: `No se pudo traducir el contenido: ${errorMessage}` };
   }
 }
