@@ -9,11 +9,6 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
-export type AnalysisResult = {
-  documentContent: string;
-  analysisInstructions: string;
-};
-
 function ChatPage() {
   const router = useRouter();
   const firestore = useFirestore();
@@ -51,16 +46,6 @@ function ChatPage() {
     );
   }
   
-  // Combine content and instructions from all documents
-  const documentContent = documents.map(doc => `Contenido del documento "${doc.fileName}":\n${doc.content}`).join('\n\n---\n\n');
-  const analysisInstructions = documents.map(doc => `Instrucciones para "${doc.fileName}":\n${doc.analysisInstructions}`).join('\n\n');
-
-
-  const analysisContext: AnalysisResult = {
-    documentContent,
-    analysisInstructions,
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-3xl mx-auto">
@@ -71,7 +56,7 @@ function ChatPage() {
           </h1>
         </header>
         <main>
-          <ChatComponent analysisContext={analysisContext} />
+          <ChatComponent documents={documents || []} />
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">

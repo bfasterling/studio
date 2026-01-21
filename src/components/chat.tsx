@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { getAnswer } from '@/app/actions';
-import type { AnalysisResult } from '@/app/chat/page';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,11 +22,20 @@ type Message = {
   content: string;
 };
 
-type ChatProps = {
-  analysisContext: AnalysisResult;
+type Document = {
+  id: string;
+  content: string;
+  fileName: string;
+  analysisInstructions: string;
+  [key: string]: any;
 };
 
-export function Chat({ analysisContext }: ChatProps) {
+
+type ChatProps = {
+  documents: Document[];
+};
+
+export function Chat({ documents }: ChatProps) {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -54,13 +62,37 @@ export function Chat({ analysisContext }: ChatProps) {
     const userMessage: Message = { role: 'user', content: input };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    const question = input;
     setInput('');
     setIsLoading(true);
 
+    // Simple client-side search to find relevant documents
+    const searchWords = question.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+    
+    const rankedDocs = documents
+      .map(doc => {
+        const content = doc.content.toLowerCase();
+        let score = 0;
+        for (const word of searchWords) {
+          if (content.includes(word)) {
+            score++;
+          }
+        }
+        return { ...doc, score };
+      })
+      .filter(doc => doc.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Take top 3 documents to use as context
+    const topDocs = rankedDocs.slice(0, 3);
+    
+    const documentContent = topDocs.map(doc => `Contenido del documento "${doc.fileName}":\n${doc.content}`).join('\n\n---\n\n');
+    const analysisInstructions = topDocs.map(doc => `Instrucciones para "${doc.fileName}":\n${doc.analysisInstructions}`).join('\n\n');
+
     const result = await getAnswer(
-      input,
-      analysisContext.documentContent,
-      analysisContext.analysisInstructions,
+      question,
+      documentContent,
+      analysisInstructions,
       newMessages,
     );
     
