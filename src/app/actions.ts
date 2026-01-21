@@ -8,25 +8,31 @@ import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
 
 
 type Message = {
-  role: 'user' | 'assistant';
+  role: 'user' | 'model';
   content: string;
+};
+
+type Document = {
+  id: string;
+  content: string;
+  fileName: string;
+  analysisInstructions: string;
+  [key: string]: any;
 };
 
 export async function getAnswer(
   question: string,
-  documentContent: string,
-  analysisInstructions: string,
+  documents: Document[],
   history: Message[]
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    if (!question || !documentContent) {
-      return { success: false, error: 'La pregunta y el contexto son obligatorios.' };
+    if (!question || !documents || documents.length === 0) {
+      return { success: false, error: 'La pregunta y los documentos son obligatorios.' };
     }
     
     const input: LimitResponsesToDocumentContentInput = {
       question,
-      documentContent,
-      analysisInstructions,
+      documents,
       history,
     };
 

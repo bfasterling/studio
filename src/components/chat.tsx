@@ -18,7 +18,7 @@ import { Bot, Loader2, Send, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Message = {
-  role: 'user' | 'assistant';
+  role: 'user' | 'model';
   content: string;
 };
 
@@ -57,7 +57,7 @@ export function Chat({ documents }: ChatProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
     const newMessages = [...messages, userMessage];
@@ -66,38 +66,14 @@ export function Chat({ documents }: ChatProps) {
     setInput('');
     setIsLoading(true);
 
-    // Simple client-side search to find relevant documents
-    const searchWords = question.toLowerCase().split(/\s+/).filter(word => word.length > 3);
-    
-    const rankedDocs = documents
-      .map(doc => {
-        const content = doc.content.toLowerCase();
-        let score = 0;
-        for (const word of searchWords) {
-          if (content.includes(word)) {
-            score++;
-          }
-        }
-        return { ...doc, score };
-      })
-      .filter(doc => doc.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    // Take top 3 documents to use as context
-    const topDocs = rankedDocs.slice(0, 3);
-    
-    const documentContent = topDocs.map(doc => `Contenido del documento "${doc.fileName}":\n${doc.content}`).join('\n\n---\n\n');
-    const analysisInstructions = topDocs.map(doc => `Instrucciones para "${doc.fileName}":\n${doc.analysisInstructions}`).join('\n\n');
-
     const result = await getAnswer(
       question,
-      documentContent,
-      analysisInstructions,
-      newMessages,
+      documents,
+      newMessages
     );
     
     if (result.success && result.data) {
-      const assistantMessage: Message = { role: 'assistant', content: result.data };
+      const assistantMessage: Message = { role: 'model', content: result.data };
       setMessages((prev) => [...prev, assistantMessage]);
     } else {
       toast({
@@ -139,7 +115,7 @@ export function Chat({ documents }: ChatProps) {
                   message.role === 'user' && 'justify-end'
                 )}
               >
-                {message.role === 'assistant' && (
+                {message.role === 'model' && (
                   <Avatar className="w-8 h-8 border">
                     <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
                   </Avatar>
