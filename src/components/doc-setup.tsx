@@ -164,15 +164,15 @@ export function DocSetup({
         return;
     }
 
-    let documentContent = values.documentContent;
+    let contentToSave = values.documentContent;
     const analysisInstructions = values.analysisInstructions.toLowerCase();
 
     if (analysisInstructions.includes('traducir a español')) {
       setStatus('translating');
       try {
-        const translationResult = await translateContent(documentContent, 'español');
+        const translationResult = await translateContent(values.documentContent, 'español');
         if (translationResult.success && translationResult.data) {
-          documentContent = translationResult.data;
+          contentToSave = translationResult.data;
         } else {
           throw new Error(translationResult.error || 'La traducción falló.');
         }
@@ -187,7 +187,7 @@ export function DocSetup({
 
     const docData = {
       fileName: values.fileName,
-      content: documentContent,
+      content: contentToSave,
       analysisInstructions: values.analysisInstructions,
     };
     
