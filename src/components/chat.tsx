@@ -66,9 +66,18 @@ export function Chat({ documents }: ChatProps) {
     setInput('');
     setIsLoading(true);
 
+    // Sanitize documents to pass only plain objects to the Server Action.
+    // This removes any complex objects like Firestore Timestamps.
+    const sanitizedDocuments = documents.map(doc => ({
+      id: doc.id,
+      fileName: doc.fileName,
+      content: doc.content,
+      analysisInstructions: doc.analysisInstructions,
+    }));
+
     const result = await getAnswer(
       question,
-      documents,
+      sanitizedDocuments,
       newMessages
     );
     
