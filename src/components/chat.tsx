@@ -54,18 +54,13 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [optimisticQuestion, setOptimisticQuestion] = React.useState<string | null>(null);
-  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
 
   React.useEffect(() => {
     // Scroll to bottom whenever messages change
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversations, optimisticQuestion, isLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,7 +130,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
         <CardTitle>Chatea con tus Documentos</CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
-        <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-full pr-4">
           <div className="space-y-6">
             <div className="flex items-start gap-4">
               <Avatar className="w-8 h-8 border">
@@ -191,6 +186,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
       </CardContent>
