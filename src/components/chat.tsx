@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { Bot, Loader2, Send, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { saveChatMessage } from '@/firebase/firestore/chat-messages';
+import { saveConversation } from '@/firebase/firestore/chat-messages';
 
 // AI message structure
 type Message = {
@@ -34,23 +34,23 @@ type Document = {
   [key: string]: any;
 };
 
-// Firestore document structure for Chat Messages
-type ChatMessage = {
+// Firestore document structure for a conversation turn
+type Conversation = {
     id: string;
     userId: string;
-    messageText: string;
-    isUserMessage: boolean;
+    questionText: string;
+    answerText: string;
     timestamp: any; // Firestore timestamp
     [key: string]: any;
 }
 
 type ChatProps = {
   documents: Document[];
-  messages: ChatMessage[];
+  conversations: Conversation[];
   userId?: string;
 };
 
-export function Chat({ documents, messages, userId }: ChatProps) {
+export function Chat({ documents, conversations, userId }: ChatProps) {
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
@@ -65,7 +65,7 @@ export function Chat({ documents, messages, userId }: ChatProps) {
         behavior: 'smooth',
       });
     }
-  }, [messages]);
+  }, [conversations]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -86,21 +86,13 @@ export function Chat({ documents, messages, userId }: ChatProps) {
     
     const question = input;
     setInput('');
-    
-    // Save user message to Firestore (non-blocking)
-    saveChatMessage(firestore, {
-      userId,
-      messageText: question,
-      isUserMessage: true,
-    });
-    
     setIsLoading(true);
 
-    // Prepare history for the AI, which is the state of messages *before* the new question
-    const historyForAI: Message[] = messages.map(msg => ({
-        role: msg.isUserMessage ? 'user' : 'model',
-        content: msg.messageText
-    }));
+    // Prepare history for the AI from the existing conversation pairs
+    const historyForAI: Message[] = conversations.flatMap(conv => ([
+        { role: 'user', content: conv.questionText },
+        { role: 'model', content: conv.answerText }
+    ]));
 
     // Sanitize documents to pass only plain objects to the Server Action
     const sanitizedDocuments = documents.map(doc => ({
@@ -117,11 +109,11 @@ export function Chat({ documents, messages, userId }: ChatProps) {
     );
     
     if (result.success && result.data) {
-      // Save AI response to Firestore (non-blocking)
-      saveChatMessage(firestore, {
+      // Save the entire Q&A turn to Firestore
+      saveConversation(firestore, {
         userId,
-        messageText: result.data,
-        isUserMessage: false,
+        questionText: question,
+        answerText: result.data,
       });
     } else {
       toast({
@@ -129,7 +121,6 @@ export function Chat({ documents, messages, userId }: ChatProps) {
         title: 'Error',
         description: result.error || 'No se pudo obtener una respuesta de la IA.',
       });
-      // Note: We don't remove the user message anymore because it's already in Firestore.
     }
     
     setIsLoading(false);
@@ -154,35 +145,28 @@ export function Chat({ documents, messages, userId }: ChatProps) {
               </div>
             </div>
 
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  'flex items-start gap-4',
-                  message.isUserMessage && 'justify-end'
-                )}
-              >
-                {!message.isUserMessage && (
-                  <Avatar className="w-8 h-8 border">
-                    <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
-                  </Avatar>
-                )}
-                <div
-                  className={cn(
-                    'p-3 rounded-lg max-w-[80%] text-sm',
-                    message.isUserMessage
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
-                  )}
-                  dangerouslySetInnerHTML={{ __html: message.messageText }}
-                />
-                {message.isUserMessage && (
-                  <Avatar className="w-8 h-8 border">
-                    <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
+            {conversations.map((conversation) => (
+              <React.Fragment key={conversation.id}>
+                <div className="flex items-start gap-4 justify-end">
+                    <div className="p-3 rounded-lg max-w-[80%] text-sm bg-primary text-primary-foreground">
+                      {conversation.questionText}
+                    </div>
+                    <Avatar className="w-8 h-8 border">
+                        <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
+                    </Avatar>
+                </div>
+                <div className="flex items-start gap-4">
+                    <Avatar className="w-8 h-8 border">
+                        <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
+                    </Avatar>
+                    <div
+                      className="p-3 rounded-lg max-w-[80%] text-sm bg-muted text-foreground"
+                      dangerouslySetInnerHTML={{ __html: conversation.answerText }}
+                    />
+                </div>
+              </React.Fragment>
             ))}
+
             {isLoading && (
               <div className="flex items-start gap-4">
                 <Avatar className="w-8 h-8 border">

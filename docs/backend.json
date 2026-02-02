@@ -98,40 +98,40 @@
         "analysisDate"
       ]
     },
-    "ChatMessage": {
+    "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
+      "title": "Conversation",
       "type": "object",
-      "description": "Represents a message in the conversation between the user and the AI chat agent.",
+      "description": "Represents a question/answer pair in a conversation between a user and the AI agent.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
+          "description": "Unique identifier for the Conversation entity."
         },
         "userId": {
           "type": "string",
-          "description": "The user id to identify which user generate the message"
+          "description": "The user id to identify which user initiated the conversation turn."
         },
-        "messageText": {
+        "questionText": {
           "type": "string",
-          "description": "The text content of the chat message."
+          "description": "The text content of the user's question."
+        },
+        "answerText": {
+          "type": "string",
+          "description": "The text content of the AI's answer."
         },
         "timestamp": {
           "type": "string",
-          "description": "The date and time when the message was sent.",
+          "description": "The date and time when the conversation turn was recorded.",
           "format": "date-time"
-        },
-        "isUserMessage": {
-          "type": "boolean",
-          "description": "Indicates whether the message was sent by the user (true) or the AI agent (false)."
         }
       },
       "required": [
         "id",
         "userId",
-        "messageText",
-        "timestamp",
-        "isUserMessage"
+        "questionText",
+        "answerText",
+        "timestamp"
       ]
     }
   },
@@ -196,17 +196,17 @@
         }
       },
       {
-        "path": "/chat_messages/{messageId}",
+        "path": "/conversations/{conversationId}",
         "definition": {
-          "entityName": "ChatMessage",
+          "entityName": "Conversation",
           "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
+            "$ref": "#/backend/entities/Conversation"
           },
-          "description": "Stores all chat messages in a single global collection.",
+          "description": "Stores all conversation turns (Q&A pairs) in a single global collection.",
           "params": [
             {
-              "name": "messageId",
-              "description": "The unique ID of the chat message."
+              "name": "conversationId",
+              "description": "The unique ID of the conversation turn."
             }
           ]
         }

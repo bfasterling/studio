@@ -9,17 +9,17 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-export interface ChatMessageData {
+export interface ConversationData {
   userId: string;
-  messageText: string;
-  isUserMessage: boolean;
+  questionText: string;
+  answerText: string;
 }
 
-export function saveChatMessage(
+export function saveConversation(
   firestore: Firestore,
-  data: ChatMessageData,
+  data: ConversationData,
 ) {
-  const collectionRef = collection(firestore, 'chat_messages');
+  const collectionRef = collection(firestore, 'conversations');
   
   // Non-blocking write
   addDoc(collectionRef, {
@@ -32,9 +32,8 @@ export function saveChatMessage(
         path: collectionRef.path,
         requestResourceData: data,
       });
-      // We don't need onSuccess/onError callbacks here as the UI will update reactively.
-      // But we should still emit the global error for debugging.
+      // Emit the global error for debugging.
       errorEmitter.emit('permission-error', contextualError);
-      console.error("Error saving chat message:", contextualError);
+      console.error("Error saving conversation:", contextualError);
     });
 }

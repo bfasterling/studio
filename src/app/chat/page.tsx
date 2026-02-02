@@ -21,14 +21,14 @@ function ChatPage() {
   
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
   
-  const messagesQuery = useMemoFirebase(() => {
+  const conversationsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return query(collection(firestore, 'chat_messages'), orderBy('timestamp', 'asc'));
+      return query(collection(firestore, 'conversations'), orderBy('timestamp', 'asc'));
   }, [firestore]);
 
-  const { data: messages, isLoading: isLoadingMessages } = useCollection(messagesQuery);
+  const { data: conversations, isLoading: isLoadingConversations } = useCollection(conversationsQuery);
 
-  const isLoading = isLoadingDocuments || isUserLoading || isLoadingMessages;
+  const isLoading = isLoadingDocuments || isUserLoading || isLoadingConversations;
 
   const handleReset = () => {
     router.push('/');
@@ -67,7 +67,7 @@ function ChatPage() {
         <main>
           <ChatComponent 
             documents={documents || []} 
-            messages={messages || []}
+            conversations={conversations || []}
             userId={user?.uid}
           />
         </main>

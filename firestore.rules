@@ -3,18 +3,18 @@
  *
  * Core Philosophy:
  * This ruleset treats the application as a shared, public knowledge base.
- * Any authenticated user (including anonymous users) can read and write documents.
- * This facilitates a collaborative environment where all uploaded content is accessible to everyone.
+ * Any authenticated user (including anonymous users) can read and write documents and conversations.
+ * This facilitates a collaborative environment where all uploaded content and chat history is accessible to everyone.
  *
  * Data Structure:
  * - /documents/{documentId}: A global collection for all uploaded documents.
  * - /analysis_instructions/{analysisInstructionId}: Admin-created instructions (publicly readable).
  * - /documents/{documentId}/analyses/{analysisId}: Analysis results for a given document.
- * - /chat_messages/{messageId}: A global collection for all chat messages.
+ * - /conversations/{conversationId}: A global collection for all Q&A conversation turns.
  *
  * Key Security Decisions:
  * - Any authenticated user can create, read, update, or delete any document.
- * - Any authenticated user can read, create, update, or delete chat messages.
+ * - Any authenticated user can read, create, update, or delete conversation turns.
  * - This open model is intentional for a shared-knowledge-base application.
  */
 rules_version = '2';
@@ -55,12 +55,12 @@ service cloud.firestore {
     }
 
     /**
-     * @description Protects chat messages under the /chat_messages/{messageId} path.
-     * @path /chat_messages/{messageId}
-     * @allow (read, write) Any authenticated user can read or post messages to the shared chat.
+     * @description Protects conversation turns under the /conversations/{conversationId} path.
+     * @path /conversations/{conversationId}
+     * @allow (read, write) Any authenticated user can read or post conversation turns to the shared chat.
      * @principle Enables a global chat accessible to all users.
      */
-    match /chat_messages/{messageId} {
+    match /conversations/{conversationId} {
       allow read, write: if isSignedIn();
     }
 
