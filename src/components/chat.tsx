@@ -53,6 +53,7 @@ type ChatProps = {
 export function Chat({ documents, conversations, userId }: ChatProps) {
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [optimisticQuestion, setOptimisticQuestion] = React.useState<string | null>(null);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -65,7 +66,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
         behavior: 'smooth',
       });
     }
-  }, [conversations]);
+  }, [conversations, optimisticQuestion, isLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -85,6 +86,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
     }
     
     const question = input;
+    setOptimisticQuestion(question);
     setInput('');
     setIsLoading(true);
 
@@ -110,7 +112,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
     
     if (result.success && result.data) {
       // Save the entire Q&A turn to Firestore
-      saveConversation(firestore, {
+      await saveConversation(firestore, {
         userId,
         questionText: question,
         answerText: result.data,
@@ -123,6 +125,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
       });
     }
     
+    setOptimisticQuestion(null);
     setIsLoading(false);
   };
 
@@ -166,6 +169,17 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
                 </div>
               </React.Fragment>
             ))}
+
+            {optimisticQuestion && (
+               <div className="flex items-start gap-4 justify-end">
+                  <div className="p-3 rounded-lg max-w-[80%] text-sm bg-primary text-primary-foreground">
+                    {optimisticQuestion}
+                  </div>
+                  <Avatar className="w-8 h-8 border">
+                      <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
+                  </Avatar>
+              </div>
+            )}
 
             {isLoading && (
               <div className="flex items-start gap-4">

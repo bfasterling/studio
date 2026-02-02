@@ -22,7 +22,7 @@ export function saveConversation(
   const collectionRef = collection(firestore, 'conversations');
   
   // Non-blocking write
-  addDoc(collectionRef, {
+  return addDoc(collectionRef, {
     ...data,
     timestamp: serverTimestamp(),
   })
