@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Chat as ChatComponent } from '@/components/chat';
 import { LucideMessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 function ChatPage() {
   const router = useRouter();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const documentsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -19,7 +20,15 @@ function ChatPage() {
   }, [firestore]);
   
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
-  const isLoading = isLoadingDocuments;
+  
+  const messagesQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return query(collection(firestore, 'chat_messages'), orderBy('timestamp', 'asc'));
+  }, [firestore]);
+
+  const { data: messages, isLoading: isLoadingMessages } = useCollection(messagesQuery);
+
+  const isLoading = isLoadingDocuments || isUserLoading || isLoadingMessages;
 
   const handleReset = () => {
     router.push('/');
@@ -29,7 +38,7 @@ function ChatPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground mt-4">Cargando documentos...</p>
+        <p className="text-muted-foreground mt-4">Cargando chat...</p>
       </div>
     );
   }
@@ -56,7 +65,11 @@ function ChatPage() {
           </h1>
         </header>
         <main>
-          <ChatComponent documents={documents || []} />
+          <ChatComponent 
+            documents={documents || []} 
+            messages={messages || []}
+            userId={user?.uid}
+          />
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">

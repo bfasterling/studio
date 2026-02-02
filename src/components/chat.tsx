@@ -16,12 +16,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Bot, Loader2, Send, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import { saveChatMessage } from '@/firebase/firestore/chat-messages';
 
+// AI message structure
 type Message = {
   role: 'user' | 'model';
   content: string;
 };
 
+// Firestore document structure for Documents
 type Document = {
   id: string;
   content: string;
@@ -30,19 +34,31 @@ type Document = {
   [key: string]: any;
 };
 
+// Firestore document structure for Chat Messages
+type ChatMessage = {
+    id: string;
+    userId: string;
+    messageText: string;
+    isUserMessage: boolean;
+    timestamp: any; // Firestore timestamp
+    [key: string]: any;
+}
 
 type ChatProps = {
   documents: Document[];
+  messages: ChatMessage[];
+  userId?: string;
 };
 
-export function Chat({ documents }: ChatProps) {
-  const [messages, setMessages] = React.useState<Message[]>([]);
+export function Chat({ documents, messages, userId }: ChatProps) {
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   React.useEffect(() => {
+    // Scroll to bottom whenever messages change
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({
         top: scrollAreaRef.current.scrollHeight,
@@ -57,17 +73,36 @@ export function Chat({ documents }: ChatProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = { role: 'user', content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    if (!input.trim() || isLoading || !firestore || !userId) {
+      if (!userId) {
+        toast({
+            variant: 'destructive',
+            title: 'Error de autenticación',
+            description: 'No se pudo identificar al usuario. Por favor, recarga la página.',
+        });
+      }
+      return;
+    }
+    
     const question = input;
     setInput('');
+    
+    // Save user message to Firestore (non-blocking)
+    saveChatMessage(firestore, {
+      userId,
+      messageText: question,
+      isUserMessage: true,
+    });
+    
     setIsLoading(true);
 
-    // Sanitize documents to pass only plain objects to the Server Action.
-    // This removes any complex objects like Firestore Timestamps.
+    // Prepare history for the AI, which is the state of messages *before* the new question
+    const historyForAI: Message[] = messages.map(msg => ({
+        role: msg.isUserMessage ? 'user' : 'model',
+        content: msg.messageText
+    }));
+
+    // Sanitize documents to pass only plain objects to the Server Action
     const sanitizedDocuments = documents.map(doc => ({
       id: doc.id,
       fileName: doc.fileName,
@@ -78,20 +113,23 @@ export function Chat({ documents }: ChatProps) {
     const result = await getAnswer(
       question,
       sanitizedDocuments,
-      newMessages
+      historyForAI
     );
     
     if (result.success && result.data) {
-      const assistantMessage: Message = { role: 'model', content: result.data };
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Save AI response to Firestore (non-blocking)
+      saveChatMessage(firestore, {
+        userId,
+        messageText: result.data,
+        isUserMessage: false,
+      });
     } else {
       toast({
         variant: 'destructive',
         title: 'Error',
         description: result.error || 'No se pudo obtener una respuesta de la IA.',
       });
-      // remove the user message if the API call failed
-      setMessages((prev) => prev.slice(0, -1));
+      // Note: We don't remove the user message anymore because it's already in Firestore.
     }
     
     setIsLoading(false);
@@ -116,15 +154,15 @@ export function Chat({ documents }: ChatProps) {
               </div>
             </div>
 
-            {messages.map((message, index) => (
+            {messages.map((message) => (
               <div
-                key={index}
+                key={message.id}
                 className={cn(
                   'flex items-start gap-4',
-                  message.role === 'user' && 'justify-end'
+                  message.isUserMessage && 'justify-end'
                 )}
               >
-                {message.role === 'model' && (
+                {!message.isUserMessage && (
                   <Avatar className="w-8 h-8 border">
                     <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
                   </Avatar>
@@ -132,13 +170,13 @@ export function Chat({ documents }: ChatProps) {
                 <div
                   className={cn(
                     'p-3 rounded-lg max-w-[80%] text-sm',
-                    message.role === 'user'
+                    message.isUserMessage
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground'
                   )}
-                  dangerouslySetInnerHTML={{ __html: message.content }}
+                  dangerouslySetInnerHTML={{ __html: message.messageText }}
                 />
-                {message.role === 'user' && (
+                {message.isUserMessage && (
                   <Avatar className="w-8 h-8 border">
                     <AvatarFallback><User className="w-4 h-4 text-primary" /></AvatarFallback>
                   </Avatar>
@@ -164,9 +202,9 @@ export function Chat({ documents }: ChatProps) {
             value={input}
             onChange={handleInputChange}
             placeholder="Haz una pregunta sobre tus documentos..."
-            disabled={isLoading}
+            disabled={isLoading || !userId}
           />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+          <Button type="submit" size="icon" disabled={isLoading || !input.trim() || !userId}>
             <Send className="w-4 h-4" />
           </Button>
         </form>
