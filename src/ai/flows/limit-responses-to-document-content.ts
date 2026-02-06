@@ -64,67 +64,42 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
         inputSchema: z.object({
           query: z.string().describe('A specific, targeted query to search for within the documents. This should be more like a search engine query than a full question.'),
         }),
-        outputSchema: z.string().describe('A string containing the concatenated content of the most relevant document chunks found. Returns an empty string if no relevant content is found.'),
+        outputSchema: z.string().describe('A string containing the concatenated content of the most relevant document chunks found. Returns a user-friendly message if no relevant content is found.'),
       },
       async ({ query }) => {
-        const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+        const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 0);
         if (searchWords.length === 0) {
-          return "No relevant information found for the given query.";
+            return "No se proporcionó una consulta de búsqueda válida.";
         }
-
-        // 1. First pass: Rank documents to find the most promising ones
-        const rankedDocs = documents
-          .map(doc => {
-            const lowerCaseContent = doc.content.toLowerCase();
-            const lowerCaseFileName = doc.fileName.toLowerCase();
-            let score = 0;
-            
-            for (const word of searchWords) {
-              // Add points for each occurrence of a search word
-              score += (lowerCaseContent.match(new RegExp(word, 'g')) || []).length;
-            }
-            
-            // Boost score significantly if file name contains any of the search words
-            if (searchWords.some(word => lowerCaseFileName.includes(word))) {
-                score += 10;
-            }
-
-            return { doc, score };
-          })
-          .filter(item => item.score > 0)
-          .sort((a, b) => b.score - a.score);
-
-        // Take the top 5 most relevant documents for a deeper analysis
-        const topDocs = rankedDocs.slice(0, 5).map(item => item.doc);
-
-        if (topDocs.length === 0) {
-          return "No relevant information found in the documents for the given query.";
-        }
-
-        // 2. Second pass: Extract and rank chunks (paragraphs) from the top documents
+    
         let allChunks: { content: string; score: number; fileName: string }[] = [];
-        for (const doc of topDocs) {
-            // Split content into paragraphs. A paragraph is defined by one or more empty lines.
+    
+        // Iterate through all documents to find and score relevant chunks
+        for (const doc of documents) {
             const paragraphs = doc.content.split(/\n\s*\n/).filter(p => p.trim().length > 10);
-            
+            const lowerCaseFileName = doc.fileName.toLowerCase();
+            const fileNameBonus = searchWords.some(word => lowerCaseFileName.includes(word)) ? 10 : 0;
+    
             for (const p of paragraphs) {
                 const lowerCaseParagraph = p.toLowerCase();
                 let chunkScore = 0;
                 const matchedWords = new Set<string>();
-
+    
                 for (const word of searchWords) {
-                    if (lowerCaseParagraph.includes(word)) {
-                        chunkScore += (lowerCaseParagraph.match(new RegExp(word, 'g')) || []).length;
+                    const occurrences = (lowerCaseParagraph.match(new RegExp(word, 'g')) || []).length;
+                    if (occurrences > 0) {
+                        chunkScore += occurrences; // 1 point per occurrence
                         matchedWords.add(word);
                     }
                 }
                 
-                // Add a bonus for matching multiple distinct query words in the same chunk
+                // Bonus for matching multiple distinct query words
                 if (matchedWords.size > 1) {
                     chunkScore += matchedWords.size * 5;
                 }
-
+    
                 if (chunkScore > 0) {
+                    chunkScore += fileNameBonus; // Add file name bonus if chunk has any score
                     allChunks.push({
                         content: p,
                         score: chunkScore,
@@ -134,24 +109,23 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
             }
         }
         
-        // If after analyzing chunks, we have nothing, it might be the document isn't structured with paragraphs.
-        // As a fallback, we can take the beginning of the most relevant document.
-        if (allChunks.length === 0 && topDocs.length > 0) {
-            const fallbackDoc = topDocs[0];
-            const truncatedContent = fallbackDoc.content.substring(0, 15000);
-            return `Content from document "${fallbackDoc.fileName}":\n${truncatedContent}${fallbackDoc.content.length > 15000 ? '... (truncated)' : ''}`;
+        // If no chunks were found after searching all documents
+        if (allChunks.length === 0) {
+            return "He buscado en todos los documentos, pero no he encontrado información sobre su consulta.";
         }
-
-        // 3. Rank all collected chunks from the top documents by their score
+    
+        // Rank all collected chunks by their score
         const rankedChunks = allChunks.sort((a, b) => b.score - a.score);
-
-        // 4. Take the top 7 most relevant chunks to create the context
-        const topChunks = rankedChunks.slice(0, 7);
-
-        // 5. Format the final output for the LLM
-        return topChunks
-            .map(chunk => `Relevant snippet from document "${chunk.fileName}":\n"${chunk.content}"`)
+    
+        // Take the top 10 most relevant chunks to create the context
+        const topChunks = rankedChunks.slice(0, 10);
+    
+        // Format the final output for the LLM
+        const context = topChunks
+            .map(chunk => `Fragmento relevante del documento "${chunk.fileName}":\n"${chunk.content}"`)
             .join('\n\n---\n\n');
+        
+        return context;
       }
     );
 
@@ -175,7 +149,7 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
 3.  **Cómo Generar tu Respuesta Final:**
     *   **Si usaste la herramienta de búsqueda:**
         *   **Y encontraste información:** Basa tu respuesta EXCLUSIVAMENTE en el texto que te devolvió la herramienta. Conecta las ideas, razona e infiere para dar una respuesta completa. Resume la información en lugar de copiarla textualmente.
-        *   **Y NO encontraste información:** Si la herramienta te devolvió un mensaje indicando que no encontró nada, informa amablemente al usuario. Por ejemplo: "He buscado en los documentos, pero no he encontrado información sobre su consulta.".
+        *   **Y NO encontraste información:** Si la herramienta te devolvió un mensaje indicando que no encontró nada (como "He buscado en todos los documentos..."), simplemente devuelve ese mismo mensaje al usuario. No añadas nada más.
     *   **Si NO usaste la herramienta (porque era una pregunta conversacional):** Simplemente proporciona la respuesta amable y breve que preparaste.
     *   **En todos los casos, usa formato HTML:** Para mejorar la presentación de tus respuestas, utiliza etiquetas HTML. Para listas, usa viñetas con \`<ul>\` y \`<li>\`. Para resaltar, usa \`<strong>\`. Para datos tabulares, usa tablas con \`<table>\`, \`<thead>\`, \`<tbody>\`, \`<tr>\`, \`<th>\` y \`<td>\`, y asegúrate de que tengan bordes para legibilidad, como en el ejemplo: \`<table style="border: 1px solid #cccccc; border-collapse: collapse; width: 100%; font-size: 0.9em;">\`.
 

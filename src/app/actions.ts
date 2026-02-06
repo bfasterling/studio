@@ -39,7 +39,7 @@ export async function getAnswer(
     const { answer } = await limitResponsesToDocumentContent(input);
     
     if (!answer?.trim()) {
-      return { success: false, error: 'La IA no generó una respuesta. Por favor, intenta reformular la pregunta.' };
+      return { success: true, data: 'He buscado en los documentos, pero no he encontrado información sobre su consulta.' };
     }
 
     return { success: true, data: answer };
