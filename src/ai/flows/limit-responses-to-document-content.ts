@@ -117,8 +117,8 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
         // Rank all collected chunks by their score
         const rankedChunks = allChunks.sort((a, b) => b.score - a.score);
     
-        // Take the top 10 most relevant chunks to create the context
-        const topChunks = rankedChunks.slice(0, 10);
+        // Take the top 5 most relevant chunks to create the context
+        const topChunks = rankedChunks.slice(0, 5);
     
         // Format the final output for the LLM
         const context = topChunks
