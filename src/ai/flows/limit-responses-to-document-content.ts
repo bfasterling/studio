@@ -67,60 +67,66 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
         outputSchema: z.string().describe('A string containing the concatenated content of the most relevant document chunks found. Returns a user-friendly message if no relevant content is found.'),
       },
       async ({ query }) => {
-        const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+        const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
         if (searchWords.length === 0) {
             return "No se proporcionó una consulta de búsqueda válida.";
         }
     
         let allChunks: { content: string; score: number; fileName: string }[] = [];
-    
-        // Iterate through all documents to find and score relevant chunks
+        const CHUNK_SIZE = 1500;
+        const CHUNK_OVERLAP = 300;
+
         for (const doc of documents) {
-            const paragraphs = doc.content.split(/\n\s*\n/).filter(p => p.trim().length > 10);
+            if (!doc.content || typeof doc.content !== 'string') continue;
+
             const lowerCaseFileName = doc.fileName.toLowerCase();
-            const fileNameBonus = searchWords.some(word => lowerCaseFileName.includes(word)) ? 10 : 0;
-    
-            for (const p of paragraphs) {
-                const lowerCaseParagraph = p.toLowerCase();
-                let chunkScore = 0;
+            const fileNameBonus = searchWords.some(word => lowerCaseFileName.includes(word)) ? 20 : 0;
+
+            for (let i = 0; i < doc.content.length; i += CHUNK_SIZE - CHUNK_OVERLAP) {
+                const chunkContent = doc.content.substring(i, i + CHUNK_SIZE);
+                const lowerCaseChunk = chunkContent.toLowerCase();
+
+                let score = 0;
                 const matchedWords = new Set<string>();
-    
+
                 for (const word of searchWords) {
-                    const occurrences = (lowerCaseParagraph.match(new RegExp(word, 'g')) || []).length;
-                    if (occurrences > 0) {
-                        chunkScore += occurrences; // 1 point per occurrence
+                    if (lowerCaseChunk.includes(word)) {
                         matchedWords.add(word);
                     }
                 }
-                
-                // Bonus for matching multiple distinct query words
-                if (matchedWords.size > 1) {
-                    chunkScore += matchedWords.size * 5;
-                }
-    
-                if (chunkScore > 0) {
-                    chunkScore += fileNameBonus; // Add file name bonus if chunk has any score
+
+                if (matchedWords.size > 0) {
+                    // Score based on number of unique query words found
+                    score += matchedWords.size * 10; 
+                    
+                    // Add filename bonus
+                    score += fileNameBonus;
+
+                    // Add a density score to prioritize relevance over length
+                    const totalOccurrences = Array.from(matchedWords).reduce((acc, word) => {
+                        return acc + (lowerCaseChunk.match(new RegExp(word, 'g')) || []).length;
+                    }, 0);
+                    
+                    const density = (totalOccurrences / chunkContent.length) * 500; 
+                    score += density;
+
                     allChunks.push({
-                        content: p,
-                        score: chunkScore,
+                        content: chunkContent,
+                        score: score,
                         fileName: doc.fileName,
                     });
                 }
             }
         }
         
-        // If no chunks were found after searching all documents
         if (allChunks.length === 0) {
-            return "He buscado en todos los documentos, pero no he encontrado información sobre su consulta.";
+            return "He buscado en todos los documentos, pero no he encontrado información relevante para su consulta.";
         }
     
-        // Rank all collected chunks by their score
         const rankedChunks = allChunks.sort((a, b) => b.score - a.score);
     
-        // Take the top 5 most relevant chunks to create the context
-        const topChunks = rankedChunks.slice(0, 5);
+        const topChunks = rankedChunks.slice(0, 7);
     
-        // Format the final output for the LLM
         const context = topChunks
             .map(chunk => `Fragmento relevante del documento "${chunk.fileName}":\n"${chunk.content}"`)
             .join('\n\n---\n\n');
