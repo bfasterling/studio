@@ -52,7 +52,7 @@ Group the conversation IDs under the most appropriate theme.
 
 If a conversation doesn't fit into any of the main themes you've identified, place its ID under a special theme called "Otros temas".
 
-Your final output MUST be a single JSON object where each key is a theme name, and the value is an array of the corresponding conversation IDs.
+Your final output MUST be a single JSON object containing a single key named "themedConversations". The value for "themedConversations" should be an object where each key is a theme name, and the value is an array of the corresponding conversation IDs.
 
 Here is the list of conversations to analyze:
 {{{json conversations}}}
