@@ -55,16 +55,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Protects conversation turns, ensuring users can only access their own.
+     * @description Protects conversation turns. Allows creation by the owner and read access for all authenticated users for reporting purposes.
      * @path /conversations/{conversationId}
-     * @allow (create) A user can create a conversation for themselves.
-     * @allow (read) A user can read their own conversations. This also secures list queries.
-     * @deny (update, delete) Updating or deleting conversations is disallowed.
-     * @principle Enforces private, user-specific chat histories.
+     * @allow (create) A user can create a conversation only for themselves.
+     * @allow (read) Any authenticated user can read all conversations to enable reporting functionality.
+     * @deny (update, delete) Conversations cannot be modified or deleted by clients.
+     * @principle Balances privacy on creation with open access for analytics.
      */
     match /conversations/{conversationId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
       allow update, delete: if false;
     }
 
