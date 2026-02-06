@@ -6,7 +6,7 @@ import {
 } from '@/ai/flows/limit-responses-to-document-content';
 import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
 import { categorizeConversations, CategorizeConversationsInput } from '@/ai/flows/categorize-conversations';
-import { Timestamp } from 'firebase/firestore';
+// No longer need Timestamp from firebase/firestore.
 
 
 type Message = {
@@ -22,13 +22,8 @@ type Document = {
   [key: string]: any;
 };
 
-type Conversation = {
-    id: string;
-    userId: string;
-    questionText: string;
-    answerText:string;
-    timestamp: Timestamp;
-}
+// The `Conversation` type with Firestore's Timestamp is no longer needed in this file.
+// The `getCategorizedConversations` function will receive already-serialized data.
 
 export async function getAnswer(
   question: string,
@@ -49,7 +44,7 @@ export async function getAnswer(
     const { answer } = await limitResponsesToDocumentContent(input);
     
     if (!answer?.trim()) {
-      return { success: true, data: 'He buscado en los documentos, pero no he encontrado información sobre su consulta.' };
+      return { success: true, data: 'La IA no generó una respuesta. Por favor, intenta reformular la pregunta.' };
     }
 
     return { success: true, data: answer };
@@ -85,24 +80,23 @@ export async function translateContent(
 }
 
 export async function getCategorizedConversations(
-  conversations: Conversation[],
+  // The `conversations` parameter now expects the timestamp to be a pre-serialized ISO string.
+  conversations: {
+    id: string;
+    userId: string;
+    questionText: string;
+    answerText: string;
+    timestamp: string;
+  }[],
 ): Promise<{ success: boolean; data?: Record<string, string[]>; error?: string }> {
   try {
     if (!conversations || conversations.length === 0) {
       return { success: true, data: {} };
     }
 
-    // Convert Firestore Timestamps to ISO strings for serialization
-    const serializableConversations = conversations.map(c => ({
-        id: c.id,
-        userId: c.userId,
-        questionText: c.questionText,
-        answerText: c.answerText,
-        timestamp: c.timestamp.toDate().toISOString(),
-    }));
-
+    // Data is already serialized, so it can be passed directly to the AI flow.
     const input: CategorizeConversationsInput = {
-      conversations: serializableConversations,
+      conversations: conversations,
     };
 
     const { themedConversations } = await categorizeConversations(input);

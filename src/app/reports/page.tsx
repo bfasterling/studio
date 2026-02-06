@@ -106,7 +106,14 @@ export default function ReportsPage() {
             const handleCategorization = async () => {
                 setIsCategorizing(true);
                 setGroupedConversations(null);
-                const result = await getCategorizedConversations(typedConversations);
+                
+                // Manually serialize Firestore Timestamps to ISO strings before passing to the Server Action.
+                const serializableConversations = typedConversations.map(c => ({
+                    ...c,
+                    timestamp: c.timestamp.toDate().toISOString(),
+                }));
+
+                const result = await getCategorizedConversations(serializableConversations);
                 
                 if (result.success && result.data) {
                     const conversationMap = new Map(typedConversations.map(c => [c.id, c]));
