@@ -99,7 +99,7 @@ export async function getCategorizedConversations(
       conversations: conversations,
     };
 
-    const { themedConversations } = await categorizeConversations(input);
+    const themedConversations = await categorizeConversations(input);
     
     return { success: true, data: themedConversations };
 

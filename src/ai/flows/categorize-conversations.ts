@@ -25,9 +25,7 @@ const CategorizeConversationsInputSchema = z.object({
 export type CategorizeConversationsInput = z.infer<typeof CategorizeConversationsInputSchema>;
 
 // The output will be a map of theme names to arrays of conversation IDs.
-const CategorizeConversationsOutputSchema = z.object({
-  themedConversations: z.record(z.string(), z.array(z.string())).describe("An object where each key is a theme, and the value is an array of conversation IDs belonging to that theme."),
-});
+const CategorizeConversationsOutputSchema = z.record(z.string(), z.array(z.string())).describe("An object where each key is a theme, and the value is an array of conversation IDs belonging to that theme.");
 export type CategorizeConversationsOutput = z.infer<typeof CategorizeConversationsOutputSchema>;
 
 
@@ -52,7 +50,7 @@ Group the conversation IDs under the most appropriate theme.
 
 If a conversation doesn't fit into any of the main themes you've identified, place its ID under a special theme called "Otros temas".
 
-Your final output MUST be a single JSON object containing a single key named "themedConversations". The value for "themedConversations" should be an object where each key is a theme name, and the value is an array of the corresponding conversation IDs.
+Your final output MUST be a single JSON object where each key is a theme name (e.g., "Consultas de Precios"), and the value is an array of the corresponding conversation IDs. Do NOT nest this object inside another object.
 
 Here is the list of conversations to analyze:
 {{{json conversations}}}
@@ -68,7 +66,7 @@ const categorizeConversationsFlow = ai.defineFlow(
   async (input) => {
     // If there are no conversations, return an empty object.
     if (input.conversations.length === 0) {
-        return { themedConversations: {} };
+        return {};
     }
     const {output} = await prompt(input);
     return output!;
