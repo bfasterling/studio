@@ -4,7 +4,7 @@
  *
  * - categorizeConversations - A function that takes conversations and groups them by theme.
  * - CategorizeConversationsInput - The input type for the function.
- * - CategorizeConversationsOutput - The return type for the function.
+ * - InternalCategorizeConversationsOutput - The *internal* return type for the AI flow.
  */
 
 import {ai} from '@/ai/genkit';
@@ -15,7 +15,6 @@ const SerializableConversationSchema = z.object({
     userId: z.string(),
     questionText: z.string(),
     answerText: z.string(),
-    // Pass timestamp as an ISO string
     timestamp: z.string().describe("The ISO 8601 timestamp string for when the conversation happened."),
 });
 
@@ -24,22 +23,45 @@ const CategorizeConversationsInputSchema = z.object({
 });
 export type CategorizeConversationsInput = z.infer<typeof CategorizeConversationsInputSchema>;
 
-// The output will be a map of theme names to arrays of conversation IDs.
-const CategorizeConversationsOutputSchema = z.record(z.string(), z.array(z.string())).describe("An object where each key is a theme, and the value is an array of conversation IDs belonging to that theme.");
-export type CategorizeConversationsOutput = z.infer<typeof CategorizeConversationsOutputSchema>;
+// Define a more structured output that avoids using a plain z.record at the top level.
+const ThemeGroupSchema = z.object({
+    themeName: z.string().describe("The name of the category/theme in Spanish."),
+    conversationIds: z.array(z.string()).describe("An array of conversation IDs that fall under this theme."),
+});
+
+// The AI will return an object containing an array of these theme groups.
+const InternalCategorizeConversationsOutputSchema = z.object({
+    categorizedThemes: z.array(ThemeGroupSchema).describe("A list of themes, each containing the theme name and the IDs of the conversations belonging to it.")
+});
+export type InternalCategorizeConversationsOutput = z.infer<typeof InternalCategorizeConversationsOutputSchema>;
+
+// The final output of the exported function will still be Record<string, string[]>
+export type CategorizeConversationsOutput = Record<string, string[]>;
 
 
 export async function categorizeConversations(
   input: CategorizeConversationsInput
 ): Promise<CategorizeConversationsOutput> {
-  return categorizeConversationsFlow(input);
-}
+  const internalResult = await categorizeConversationsFlow(input);
 
+  // Transform the AI's array-based output into the record/map format the client expects.
+  if (!internalResult?.categorizedThemes) {
+    return {};
+  }
+
+  const finalOutput: CategorizeConversationsOutput = {};
+  for (const group of internalResult.categorizedThemes) {
+    if (group.themeName && group.conversationIds) {
+        finalOutput[group.themeName] = group.conversationIds;
+    }
+  }
+  return finalOutput;
+}
 
 const prompt = ai.definePrompt({
     name: 'categorizeConversationsPrompt',
     input: { schema: CategorizeConversationsInputSchema },
-    output: { schema: CategorizeConversationsOutputSchema },
+    output: { schema: InternalCategorizeConversationsOutputSchema }, // Use the new, more structured schema
     prompt: `You are an expert data analyst. Your task is to categorize a list of user questions from a Q&A system into relevant themes.
 
 You will receive an array of conversation objects, each with a 'questionText' and an 'id'.
@@ -50,7 +72,25 @@ Group the conversation IDs under the most appropriate theme.
 
 If a conversation doesn't fit into any of the main themes you've identified, place its ID under a special theme called "Otros temas".
 
-Your final output MUST be a single JSON object where each key is a theme name (e.g., "Consultas de Precios"), and the value is an array of the corresponding conversation IDs. Do NOT nest this object inside another object.
+Your final output MUST be a JSON object containing a single key "categorizedThemes". The value of this key will be an array of objects. Each object in the array represents one theme and must have two keys: "themeName" (a string for the theme's name) and "conversationIds" (an array of strings, where each string is a conversation ID).
+
+Example format:
+{
+  "categorizedThemes": [
+    {
+      "themeName": "Consultas de Precios",
+      "conversationIds": ["conv_1", "conv_5"]
+    },
+    {
+      "themeName": "Soporte Técnico",
+      "conversationIds": ["conv_2", "conv_3"]
+    },
+    {
+      "themeName": "Otros temas",
+      "conversationIds": ["conv_4"]
+    }
+  ]
+}
 
 Here is the list of conversations to analyze:
 {{{json conversations}}}
@@ -61,12 +101,11 @@ const categorizeConversationsFlow = ai.defineFlow(
   {
     name: 'categorizeConversationsFlow',
     inputSchema: CategorizeConversationsInputSchema,
-    outputSchema: CategorizeConversationsOutputSchema,
+    outputSchema: InternalCategorizeConversationsOutputSchema, // The flow itself outputs the internal format
   },
   async (input) => {
-    // If there are no conversations, return an empty object.
     if (input.conversations.length === 0) {
-        return {};
+        return { categorizedThemes: [] };
     }
     const {output} = await prompt(input);
     return output!;
