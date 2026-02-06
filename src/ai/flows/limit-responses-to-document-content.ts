@@ -60,41 +60,98 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
     const searchDocumentsTool = ai.defineTool(
       {
         name: 'searchDocuments',
-        description: 'Searches through the content of uploaded documents to find information relevant to a user query.',
+        description: 'Searches through the content of uploaded documents to find information relevant to a user query. This is the primary way to get information.',
         inputSchema: z.object({
           query: z.string().describe('A specific, targeted query to search for within the documents. This should be more like a search engine query than a full question.'),
         }),
         outputSchema: z.string().describe('A string containing the concatenated content of the most relevant document chunks found. Returns an empty string if no relevant content is found.'),
       },
       async ({ query }) => {
-        // Simple keyword-based search implementation.
         const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
-        
+        if (searchWords.length === 0) {
+          return "No relevant information found for the given query.";
+        }
+
+        // 1. First pass: Rank documents to find the most promising ones
         const rankedDocs = documents
           .map(doc => {
-            const content = doc.content.toLowerCase();
+            const lowerCaseContent = doc.content.toLowerCase();
+            const lowerCaseFileName = doc.fileName.toLowerCase();
             let score = 0;
+            
             for (const word of searchWords) {
-              // A simple scoring mechanism: count occurrences.
-              score += (content.match(new RegExp(word, 'g')) || []).length;
+              // Add points for each occurrence of a search word
+              score += (lowerCaseContent.match(new RegExp(word, 'g')) || []).length;
             }
-            // Boost score if file name is relevant
-            if (doc.fileName.toLowerCase().includes(query.toLowerCase())) {
-                score += 5;
+            
+            // Boost score significantly if file name contains any of the search words
+            if (searchWords.some(word => lowerCaseFileName.includes(word))) {
+                score += 10;
             }
 
-            return { ...doc, score };
+            return { doc, score };
           })
-          .filter(doc => doc.score > 0)
+          .filter(item => item.score > 0)
           .sort((a, b) => b.score - a.score);
 
-        const topDocs = rankedDocs.slice(0, 3); // Take top 3 most relevant documents
+        // Take the top 5 most relevant documents for a deeper analysis
+        const topDocs = rankedDocs.slice(0, 5).map(item => item.doc);
 
         if (topDocs.length === 0) {
           return "No relevant information found in the documents for the given query.";
         }
+
+        // 2. Second pass: Extract and rank chunks (paragraphs) from the top documents
+        let allChunks: { content: string; score: number; fileName: string }[] = [];
+        for (const doc of topDocs) {
+            // Split content into paragraphs. A paragraph is defined by one or more empty lines.
+            const paragraphs = doc.content.split(/\n\s*\n/).filter(p => p.trim().length > 10);
+            
+            for (const p of paragraphs) {
+                const lowerCaseParagraph = p.toLowerCase();
+                let chunkScore = 0;
+                const matchedWords = new Set<string>();
+
+                for (const word of searchWords) {
+                    if (lowerCaseParagraph.includes(word)) {
+                        chunkScore += (lowerCaseParagraph.match(new RegExp(word, 'g')) || []).length;
+                        matchedWords.add(word);
+                    }
+                }
+                
+                // Add a bonus for matching multiple distinct query words in the same chunk
+                if (matchedWords.size > 1) {
+                    chunkScore += matchedWords.size * 5;
+                }
+
+                if (chunkScore > 0) {
+                    allChunks.push({
+                        content: p,
+                        score: chunkScore,
+                        fileName: doc.fileName,
+                    });
+                }
+            }
+        }
         
-        return topDocs.map(doc => `Content from document "${doc.fileName}":\n${doc.content}`).join('\n\n---\n\n');
+        // If after analyzing chunks, we have nothing, it might be the document isn't structured with paragraphs.
+        // As a fallback, we can take the beginning of the most relevant document.
+        if (allChunks.length === 0 && topDocs.length > 0) {
+            const fallbackDoc = topDocs[0];
+            const truncatedContent = fallbackDoc.content.substring(0, 15000);
+            return `Content from document "${fallbackDoc.fileName}":\n${truncatedContent}${fallbackDoc.content.length > 15000 ? '... (truncated)' : ''}`;
+        }
+
+        // 3. Rank all collected chunks from the top documents by their score
+        const rankedChunks = allChunks.sort((a, b) => b.score - a.score);
+
+        // 4. Take the top 7 most relevant chunks to create the context
+        const topChunks = rankedChunks.slice(0, 7);
+
+        // 5. Format the final output for the LLM
+        return topChunks
+            .map(chunk => `Relevant snippet from document "${chunk.fileName}":\n"${chunk.content}"`)
+            .join('\n\n---\n\n');
       }
     );
 
