@@ -6,7 +6,7 @@ import { Chat as ChatComponent } from '@/components/chat';
 import { LucideMessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 function ChatPage() {
@@ -22,9 +22,13 @@ function ChatPage() {
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
   
   const conversationsQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return query(collection(firestore, 'conversations'), orderBy('timestamp', 'asc'));
-  }, [firestore]);
+      if (!firestore || !user?.uid) return null;
+      return query(
+        collection(firestore, 'conversations'), 
+        where('userId', '==', user.uid),
+        orderBy('timestamp', 'asc')
+      );
+  }, [firestore, user?.uid]);
 
   const { data: conversations, isLoading: isLoadingConversations } = useCollection(conversationsQuery);
 
