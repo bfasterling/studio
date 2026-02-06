@@ -46,11 +46,11 @@ type Conversation = {
 
 type ChatProps = {
   documents: Document[];
-  conversations: Conversation[];
   userId?: string;
 };
 
-export function Chat({ documents, conversations, userId }: ChatProps) {
+export function Chat({ documents, userId }: ChatProps) {
+  const [messages, setMessages] = React.useState<Conversation[]>([]);
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [optimisticQuestion, setOptimisticQuestion] = React.useState<string | null>(null);
@@ -61,7 +61,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
   React.useEffect(() => {
     // Scroll to bottom whenever messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversations, optimisticQuestion, isLoading]);
+  }, [messages, optimisticQuestion, isLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -86,7 +86,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
     setIsLoading(true);
 
     // Prepare history for the AI from the existing conversation pairs
-    const historyForAI: Message[] = conversations.flatMap(conv => ([
+    const historyForAI: Message[] = messages.flatMap(conv => ([
         { role: 'user', content: conv.questionText },
         { role: 'model', content: conv.answerText }
     ]));
@@ -105,13 +105,26 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
       historyForAI
     );
     
+    setOptimisticQuestion(null);
+    setIsLoading(false);
+
     if (result.success && result.data) {
-      // Save the entire Q&A turn to Firestore
-      await saveConversation(firestore, {
+      // Save the entire Q&A turn to Firestore in the background
+      saveConversation(firestore, {
         userId,
         questionText: question,
         answerText: result.data,
       });
+
+      const newConversationPair: Conversation = {
+        id: `qa-${Date.now()}`,
+        userId,
+        questionText: question,
+        answerText: result.data,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, newConversationPair]);
+
     } else {
       toast({
         variant: 'destructive',
@@ -119,9 +132,6 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
         description: result.error || 'No se pudo obtener una respuesta de la IA.',
       });
     }
-    
-    setOptimisticQuestion(null);
-    setIsLoading(false);
   };
 
   return (
@@ -143,7 +153,7 @@ export function Chat({ documents, conversations, userId }: ChatProps) {
               </div>
             </div>
 
-            {conversations.map((conversation) => (
+            {messages.map((conversation) => (
               <React.Fragment key={conversation.id}>
                 <div className="flex items-start gap-4 justify-end">
                     <div className="p-3 rounded-lg max-w-[80%] text-sm bg-primary text-primary-foreground">
