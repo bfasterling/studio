@@ -5,6 +5,8 @@ import {
   LimitResponsesToDocumentContentInput,
 } from '@/ai/flows/limit-responses-to-document-content';
 import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
+import { categorizeConversations, CategorizeConversationsInput } from '@/ai/flows/categorize-conversations';
+import { Timestamp } from 'firebase/firestore';
 
 
 type Message = {
@@ -20,13 +22,21 @@ type Document = {
   [key: string]: any;
 };
 
+type Conversation = {
+    id: string;
+    userId: string;
+    questionText: string;
+    answerText:string;
+    timestamp: Timestamp;
+}
+
 export async function getAnswer(
   question: string,
   documents: Document[],
   history: Message[]
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    if (!question || !documents || documents.length === 0) {
+    if (!question || !documents) {
       return { success: false, error: 'La pregunta y los documentos son obligatorios.' };
     }
     
@@ -71,5 +81,37 @@ export async function translateContent(
     console.error(e);
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     return { success: false, error: `No se pudo traducir el contenido: ${errorMessage}` };
+  }
+}
+
+export async function getCategorizedConversations(
+  conversations: Conversation[],
+): Promise<{ success: boolean; data?: Record<string, string[]>; error?: string }> {
+  try {
+    if (!conversations || conversations.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    // Convert Firestore Timestamps to ISO strings for serialization
+    const serializableConversations = conversations.map(c => ({
+        id: c.id,
+        userId: c.userId,
+        questionText: c.questionText,
+        answerText: c.answerText,
+        timestamp: c.timestamp.toDate().toISOString(),
+    }));
+
+    const input: CategorizeConversationsInput = {
+      conversations: serializableConversations,
+    };
+
+    const { themedConversations } = await categorizeConversations(input);
+    
+    return { success: true, data: themedConversations };
+
+  } catch (e) {
+    console.error(e);
+    const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+    return { success: false, error: `No se pudo categorizar las conversaciones: ${errorMessage}` };
   }
 }

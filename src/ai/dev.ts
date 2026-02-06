@@ -4,3 +4,4 @@ config();
 
 import '@/ai/flows/limit-responses-to-document-content.ts';
 import '@/ai/flows/translate-text.ts';
+import '@/ai/flows/categorize-conversations.ts';
