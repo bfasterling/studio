@@ -256,22 +256,26 @@ export default function ReportsPage() {
                             </div>
                         ) : sortOrder === 'theme' && groupedConversations ? (
                             // Grouped by theme view
-                            <div>
+                            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedConversations)}>
                                 {Object.entries(groupedConversations).map(([theme, convs]) => (
-                                    <div key={theme}>
-                                        <h3 className="text-xl font-semibold mt-6 mb-2 px-1 text-primary/90">{theme}</h3>
-                                        {convs.length > 0 ? (
-                                            <Accordion type="single" collapsible className="w-full">
-                                                {convs.map((conv) => (
-                                                    <ConversationItem conv={conv} key={conv.id}/>
-                                                ))}
-                                            </Accordion>
-                                        ) : (
-                                            <p className="text-muted-foreground px-1">No hay conversaciones para este tema.</p>
-                                        )}
-                                    </div>
+                                    <AccordionItem value={theme} key={theme}>
+                                        <AccordionTrigger className="py-4 text-xl font-semibold hover:no-underline">
+                                            {theme} <span className="text-base font-normal text-muted-foreground ml-2">({convs.length} {convs.length === 1 ? 'conversación' : 'conversaciones'})</span>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pb-4 pl-6">
+                                            {convs.length > 0 ? (
+                                                <Accordion type="single" collapsible className="w-full">
+                                                    {convs.map((conv) => (
+                                                        <ConversationItem conv={conv} key={conv.id}/>
+                                                    ))}
+                                                </Accordion>
+                                            ) : (
+                                                <p className="text-muted-foreground px-1">No hay conversaciones para este tema.</p>
+                                            )}
+                                        </AccordionContent>
+                                    </AccordionItem>
                                 ))}
-                            </div>
+                            </Accordion>
                         ) : (
                             // Default list view
                             <Accordion type="single" collapsible className="w-full">
