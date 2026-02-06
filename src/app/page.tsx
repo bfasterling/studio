@@ -99,9 +99,14 @@ export default function Home() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Documentos Cargados</h2>
-              <Button asChild>
-                <Link href="/chat">Ir al Chat</Link>
-              </Button>
+               <div className="flex gap-2">
+                <Button asChild variant="outline">
+                    <Link href="/reports">Ver Reportes</Link>
+                </Button>
+                <Button asChild>
+                    <Link href="/chat">Ir al Chat</Link>
+                </Button>
+              </div>
             </div>
             <div className="border rounded-lg p-4">
               {isLoading && <p>Cargando documentos...</p>}
