@@ -256,7 +256,7 @@ export default function ReportsPage() {
                             </div>
                         ) : sortOrder === 'theme' && groupedConversations ? (
                             // Grouped by theme view
-                            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedConversations)}>
+                            <Accordion type="multiple" className="w-full">
                                 {Object.entries(groupedConversations).map(([theme, convs]) => (
                                     <AccordionItem value={theme} key={theme}>
                                         <AccordionTrigger className="py-4 text-xl font-semibold hover:no-underline">
