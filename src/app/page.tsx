@@ -30,9 +30,9 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const documentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, `documents`), orderBy('createdAt', 'desc'));
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
 

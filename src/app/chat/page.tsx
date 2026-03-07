@@ -15,9 +15,9 @@ function ChatPage() {
   const { user, isUserLoading } = useUser();
 
   const documentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, `documents`));
-  }, [firestore]);
+  }, [firestore, user]);
   
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
 

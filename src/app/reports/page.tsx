@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -90,6 +90,7 @@ function ConversationItem({ conv }: { conv: Conversation }) {
 
 export default function ReportsPage() {
     const firestore = useFirestore();
+    const { user, isUserLoading } = useUser();
     const { toast } = useToast();
     
     // Default filter: last 7 days
@@ -103,7 +104,7 @@ export default function ReportsPage() {
     const [isCategorizing, setIsCategorizing] = useState(false);
 
     const conversationsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
 
         const constraints = [];
 
@@ -117,9 +118,9 @@ export default function ReportsPage() {
         constraints.push(orderBy('timestamp', sortOrder === 'asc' ? 'asc' : 'desc'));
         
         return query(collection(firestore, 'conversations'), ...constraints);
-    }, [firestore, date, sortOrder]);
+    }, [firestore, user, date, sortOrder]);
 
-    const { data: conversations, isLoading } = useCollection(conversationsQuery);
+    const { data: conversations, isLoading: isLoadingCollection } = useCollection(conversationsQuery);
     const typedConversations = conversations as Conversation[] | null;
 
     // Calculate Summary Stats
@@ -201,6 +202,7 @@ export default function ReportsPage() {
         return groups;
     };
 
+    const isLoading = isUserLoading || isLoadingCollection;
     const showLoader = isLoading || isCategorizing;
     const dateGroups = sortOrder !== 'theme' ? getGroupedByDate() : null;
 
