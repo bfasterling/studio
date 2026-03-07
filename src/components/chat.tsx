@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { getAnswer } from '@/app/actions';
+import { getAnswer, AIResponseData } from '@/app/actions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,9 @@ type Conversation = {
     questionText: string;
     answerText: string;
     timestamp: any; // Firestore timestamp
+    inputTokens?: number;
+    outputTokens?: number;
+    cost?: number;
     [key: string]: any;
 }
 
@@ -109,19 +112,27 @@ export function Chat({ documents, userId }: ChatProps) {
     setIsLoading(false);
 
     if (result.success && result.data) {
+      const aiData = result.data as AIResponseData;
+
       // Save the entire Q&A turn to Firestore in the background
       saveConversation(firestore, {
         userId,
         questionText: question,
-        answerText: result.data,
+        answerText: aiData.answer,
+        inputTokens: aiData.inputTokens,
+        outputTokens: aiData.outputTokens,
+        cost: aiData.cost,
       });
 
       const newConversationPair: Conversation = {
         id: `qa-${Date.now()}`,
         userId,
         questionText: question,
-        answerText: result.data,
-        timestamp: new Date()
+        answerText: aiData.answer,
+        timestamp: new Date(),
+        inputTokens: aiData.inputTokens,
+        outputTokens: aiData.outputTokens,
+        cost: aiData.cost,
       };
       setMessages(prev => [...prev, newConversationPair]);
 

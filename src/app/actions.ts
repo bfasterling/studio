@@ -6,8 +6,11 @@ import {
 } from '@/ai/flows/limit-responses-to-document-content';
 import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
 import { categorizeConversations, CategorizeConversationsInput } from '@/ai/flows/categorize-conversations';
-// No longer need Timestamp from firebase/firestore.
 
+// COST CONSTANTS (Price per 1 million tokens)
+// Gemini 1.5 Flash Prices (Approximate)
+const COST_PER_1M_INPUT_TOKENS = 0.075; // USD
+const COST_PER_1M_OUTPUT_TOKENS = 0.30;  // USD
 
 type Message = {
   role: 'user' | 'model';
@@ -22,14 +25,18 @@ type Document = {
   [key: string]: any;
 };
 
-// The `Conversation` type with Firestore's Timestamp is no longer needed in this file.
-// The `getCategorizedConversations` function will receive already-serialized data.
+export type AIResponseData = {
+  answer: string;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+};
 
 export async function getAnswer(
   question: string,
   documents: Document[],
   history: Message[]
-): Promise<{ success: boolean; data?: string; error?: string }> {
+): Promise<{ success: boolean; data?: AIResponseData; error?: string }> {
   try {
     if (!question || !documents) {
       return { success: false, error: 'La pregunta y los documentos son obligatorios.' };
@@ -41,13 +48,27 @@ export async function getAnswer(
       history,
     };
 
-    const { answer } = await limitResponsesToDocumentContent(input);
+    const { answer, usage } = await limitResponsesToDocumentContent(input);
     
     if (!answer?.trim()) {
-      return { success: true, data: 'La IA no generó una respuesta. Por favor, intenta reformular la pregunta.' };
+      return { success: true, data: { answer: 'La IA no generó una respuesta. Por favor, intenta reformular la pregunta.', inputTokens: 0, outputTokens: 0, cost: 0 } };
     }
 
-    return { success: true, data: answer };
+    // Calculate cost
+    const inputTokens = usage?.inputTokens || 0;
+    const outputTokens = usage?.outputTokens || 0;
+    const cost = (inputTokens / 1_000_000 * COST_PER_1M_INPUT_TOKENS) + 
+                 (outputTokens / 1_000_000 * COST_PER_1M_OUTPUT_TOKENS);
+
+    return { 
+      success: true, 
+      data: { 
+        answer, 
+        inputTokens, 
+        outputTokens, 
+        cost 
+      } 
+    };
   } catch (e) {
     console.error(e);
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
@@ -80,7 +101,6 @@ export async function translateContent(
 }
 
 export async function getCategorizedConversations(
-  // The `conversations` parameter now expects the timestamp to be a pre-serialized ISO string.
   conversations: {
     id: string;
     userId: string;
@@ -94,7 +114,6 @@ export async function getCategorizedConversations(
       return { success: true, data: {} };
     }
 
-    // Data is already serialized, so it can be passed directly to the AI flow.
     const input: CategorizeConversationsInput = {
       conversations: conversations,
     };

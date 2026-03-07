@@ -13,6 +13,9 @@ export interface ConversationData {
   userId: string;
   questionText: string;
   answerText: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cost?: number;
 }
 
 export function saveConversation(

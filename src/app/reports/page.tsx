@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
-import { format, subDays, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Loader2, CalendarDays } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, CalendarDays, Coins, Activity, MessageSquare } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
 import { cn } from '@/lib/utils';
@@ -47,14 +47,32 @@ type Conversation = {
     questionText: string;
     answerText: string;
     timestamp: Timestamp;
+    inputTokens?: number;
+    outputTokens?: number;
+    cost?: number;
 };
 
 function ConversationItem({ conv }: { conv: Conversation }) {
+    const totalTokens = (conv.inputTokens || 0) + (conv.outputTokens || 0);
+    const cost = conv.cost || 0;
+
     return (
         <AccordionItem value={conv.id} key={conv.id} className="border-none">
             <AccordionTrigger className="hover:no-underline py-2">
                 <div className="flex justify-between items-center w-full pr-4">
-                    <span className="truncate font-medium text-left text-sm">{conv.questionText}</span>
+                    <div className="flex flex-col items-start gap-1 overflow-hidden">
+                        <span className="truncate font-medium text-left text-sm w-full">{conv.questionText}</span>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                             <span className="flex items-center gap-1">
+                                <Activity className="h-3 w-3" />
+                                {totalTokens} tokens
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Coins className="h-3 w-3" />
+                                ${cost.toFixed(6)}
+                            </span>
+                        </div>
+                    </div>
                     <span className="text-xs text-muted-foreground text-right flex-shrink-0 ml-4">
                         {conv.timestamp ? format(conv.timestamp.toDate(), 'p', { locale: es }) : ''}
                     </span>
@@ -103,6 +121,19 @@ export default function ReportsPage() {
 
     const { data: conversations, isLoading } = useCollection(conversationsQuery);
     const typedConversations = conversations as Conversation[] | null;
+
+    // Calculate Summary Stats
+    const stats = useMemo(() => {
+        if (!typedConversations) return { totalQuestions: 0, totalTokens: 0, totalCost: 0 };
+        
+        return typedConversations.reduce((acc, conv) => {
+            return {
+                totalQuestions: acc.totalQuestions + 1,
+                totalTokens: acc.totalTokens + (conv.inputTokens || 0) + (conv.outputTokens || 0),
+                totalCost: acc.totalCost + (conv.cost || 0),
+            };
+        }, { totalQuestions: 0, totalTokens: 0, totalCost: 0 });
+    }, [typedConversations]);
 
     useEffect(() => {
         if (sortOrder === 'theme' && typedConversations && typedConversations.length > 0) {
@@ -157,7 +188,6 @@ export default function ReportsPage() {
         }
     }, [sortOrder, typedConversations, toast]);
 
-    // Helper to group by date for the default view
     const getGroupedByDate = () => {
         if (!typedConversations) return {};
         const groups: Record<string, Conversation[]> = {};
@@ -176,25 +206,76 @@ export default function ReportsPage() {
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
-            <Card className="w-full max-w-5xl mx-auto shadow-lg">
+            <Card className="w-full max-w-5xl mx-auto shadow-lg border-t-4 border-t-primary">
                 <CardHeader>
-                    <CardTitle className="text-3xl font-bold">Reporte de Conversaciones</CardTitle>
-                    <CardDescription>
-                        Analiza las interacciones de los usuarios con el asistente de IA.
-                    </CardDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle className="text-3xl font-bold">Reporte de Conversaciones</CardTitle>
+                            <CardDescription>
+                                Analiza las interacciones y el costo operativo de tu asistente.
+                            </CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden md:flex">
+                            Imprimir Reporte
+                        </Button>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-muted/50">
+                <CardContent className="space-y-8">
+                    
+                    {/* Summary Dashboard */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="bg-primary/5 border-primary/20">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-full">
+                                        <MessageSquare className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Preguntas</p>
+                                        <p className="text-2xl font-bold">{stats.totalQuestions}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-primary/5 border-primary/20">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-full">
+                                        <Activity className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Tokens Totales</p>
+                                        <p className="text-2xl font-bold">{stats.totalTokens.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-primary/5 border-primary/20">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-full">
+                                        <Coins className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Costo Estimado</p>
+                                        <p className="text-2xl font-bold">${stats.totalCost.toFixed(4)}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-muted/30">
                         {/* Date Picker */}
                         <div className="flex-1 space-y-2">
-                             <label className="text-sm font-medium">Rango de Fechas</label>
+                             <label className="text-xs font-bold uppercase text-muted-foreground">Rango de Fechas</label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
                                         id="date"
                                         variant={'outline'}
                                         className={cn(
-                                            'w-full justify-start text-left font-normal',
+                                            'w-full justify-start text-left font-normal bg-background',
                                             !date && 'text-muted-foreground'
                                         )}
                                     >
@@ -228,9 +309,9 @@ export default function ReportsPage() {
                         </div>
                         {/* Sort Order Select */}
                         <div className="flex-1 space-y-2">
-                             <label className="text-sm font-medium">Visualización / Orden</label>
+                             <label className="text-xs font-bold uppercase text-muted-foreground">Visualización</label>
                             <Select onValueChange={(value: 'desc' | 'asc' | 'theme') => setSortOrder(value)} defaultValue={sortOrder}>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger className="w-full bg-background">
                                     <SelectValue placeholder="Ordenar por..." />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -241,7 +322,7 @@ export default function ReportsPage() {
                             </Select>
                         </div>
                          <div className="flex items-end">
-                            <Button onClick={() => setDate(undefined)} variant="ghost">
+                            <Button onClick={() => setDate(undefined)} variant="ghost" className="text-xs">
                                 Limpiar Filtros
                             </Button>
                         </div>
@@ -253,23 +334,23 @@ export default function ReportsPage() {
                         {showLoader ? (
                             <div className="flex flex-col items-center justify-center p-10">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="mt-2 text-muted-foreground">
-                                    {isCategorizing ? 'Agrupando por tema...' : 'Cargando conversaciones...'}
+                                <p className="mt-2 text-muted-foreground text-sm">
+                                    {isCategorizing ? 'Analizando temas con IA...' : 'Cargando conversaciones...'}
                                 </p>
                             </div>
                         ) : !typedConversations || typedConversations.length === 0 ? (
-                            <div className="text-center py-10">
-                                <p className="text-muted-foreground">No se encontraron conversaciones para los filtros seleccionados.</p>
+                            <div className="text-center py-20 border-2 border-dashed rounded-xl">
+                                <p className="text-muted-foreground">No se encontraron conversaciones para este período.</p>
                             </div>
                         ) : sortOrder === 'theme' && groupedConversations ? (
-                            // Grouped by theme view (IA)
-                            <Accordion type="multiple" className="w-full">
+                            <Accordion type="multiple" className="w-full space-y-3">
                                 {Object.entries(groupedConversations).map(([theme, convs]) => (
-                                    <AccordionItem value={theme} key={theme} className="border rounded-lg mb-4 px-4 bg-card shadow-sm">
-                                        <AccordionTrigger className="py-4 text-lg font-semibold hover:no-underline">
+                                    <AccordionItem value={theme} key={theme} className="border rounded-lg px-4 bg-card shadow-sm overflow-hidden">
+                                        <AccordionTrigger className="py-4 text-base font-semibold hover:no-underline">
                                             <div className="flex items-center gap-2">
-                                                <span>{theme}</span>
-                                                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">TEMA</span>
+                                                <span className="capitalize">{theme}</span>
+                                                <span className="text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                                                     {convs.length}
                                                 </span>
                                             </div>
@@ -285,15 +366,14 @@ export default function ReportsPage() {
                                 ))}
                             </Accordion>
                         ) : (
-                            // Default view: Grouped by Date
-                            <Accordion type="multiple" className="w-full">
+                            <Accordion type="multiple" className="w-full space-y-3">
                                 {Object.entries(dateGroups || {}).map(([dateLabel, convs]) => (
-                                    <AccordionItem value={dateLabel} key={dateLabel} className="border rounded-lg mb-4 px-4 bg-card shadow-sm">
-                                        <AccordionTrigger className="py-4 text-lg font-semibold hover:no-underline capitalize">
+                                    <AccordionItem value={dateLabel} key={dateLabel} className="border rounded-lg px-4 bg-card shadow-sm overflow-hidden">
+                                        <AccordionTrigger className="py-4 text-base font-semibold hover:no-underline capitalize">
                                             <div className="flex items-center gap-2">
-                                                <CalendarDays className="h-5 w-5 text-primary" />
+                                                <CalendarDays className="h-4 w-4 text-primary" />
                                                 <span>{dateLabel}</span>
-                                                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                <span className="text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                                                     {convs.length}
                                                 </span>
                                             </div>
