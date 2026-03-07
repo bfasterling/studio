@@ -93,18 +93,25 @@ export default function ReportsPage() {
     const { user, isUserLoading } = useUser();
     const { toast } = useToast();
     
-    // Default filter: last 7 days
-    const [date, setDate] = useState<DateRange | undefined>({
-        from: subDays(new Date(), 7),
-        to: new Date(),
-    });
+    // Defer date initialization to avoid hydration mismatch
+    const [date, setDate] = useState<DateRange | undefined>(undefined);
+    const [isMounted, setIsMounted] = useState(false);
     
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | 'theme'>('desc');
     const [groupedConversations, setGroupedConversations] = useState<Record<string, Conversation[]> | null>(null);
     const [isCategorizing, setIsCategorizing] = useState(false);
 
+    // Effect to handle hydration and initial date state
+    useEffect(() => {
+        setIsMounted(true);
+        setDate({
+            from: subDays(new Date(), 7),
+            to: new Date(),
+        });
+    }, []);
+
     const conversationsQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
+        if (!firestore || !user || !isMounted || !date) return null;
 
         const constraints = [];
 
@@ -118,7 +125,7 @@ export default function ReportsPage() {
         constraints.push(orderBy('timestamp', sortOrder === 'asc' ? 'asc' : 'desc'));
         
         return query(collection(firestore, 'conversations'), ...constraints);
-    }, [firestore, user, date, sortOrder]);
+    }, [firestore, user, date, sortOrder, isMounted]);
 
     const { data: conversations, isLoading: isLoadingCollection } = useCollection(conversationsQuery);
     const typedConversations = conversations as Conversation[] | null;
@@ -203,8 +210,16 @@ export default function ReportsPage() {
     };
 
     const isLoading = isUserLoading || isLoadingCollection;
-    const showLoader = isLoading || isCategorizing;
+    const showLoader = isLoading || isCategorizing || !isMounted;
     const dateGroups = sortOrder !== 'theme' ? getGroupedByDate() : null;
+
+    if (!isMounted) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
