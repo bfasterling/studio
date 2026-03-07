@@ -4,9 +4,9 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, CalendarDays } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
 import { cn } from '@/lib/utils';
@@ -51,16 +51,16 @@ type Conversation = {
 
 function ConversationItem({ conv }: { conv: Conversation }) {
     return (
-        <AccordionItem value={conv.id} key={conv.id}>
-            <AccordionTrigger>
+        <AccordionItem value={conv.id} key={conv.id} className="border-none">
+            <AccordionTrigger className="hover:no-underline py-2">
                 <div className="flex justify-between items-center w-full pr-4">
-                    <span className="truncate font-medium text-left">{conv.questionText}</span>
-                    <span className="text-sm text-muted-foreground text-right flex-shrink-0 ml-4">
-                        {conv.timestamp ? format(conv.timestamp.toDate(), 'PPpp', { locale: es }) : 'Fecha desconocida'}
+                    <span className="truncate font-medium text-left text-sm">{conv.questionText}</span>
+                    <span className="text-xs text-muted-foreground text-right flex-shrink-0 ml-4">
+                        {conv.timestamp ? format(conv.timestamp.toDate(), 'p', { locale: es }) : ''}
                     </span>
                 </div>
             </AccordionTrigger>
-            <AccordionContent className="p-4 bg-muted/30 rounded-b-md">
+            <AccordionContent className="p-4 bg-muted/30 rounded-md mt-1">
                  <div
                     className="prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: conv.answerText }}
@@ -73,9 +73,14 @@ function ConversationItem({ conv }: { conv: Conversation }) {
 export default function ReportsPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const [date, setDate] = useState<DateRange | undefined>();
-    const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | 'theme'>('desc');
     
+    // Default filter: last 7 days
+    const [date, setDate] = useState<DateRange | undefined>({
+        from: subDays(new Date(), 7),
+        to: new Date(),
+    });
+    
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | 'theme'>('desc');
     const [groupedConversations, setGroupedConversations] = useState<Record<string, Conversation[]> | null>(null);
     const [isCategorizing, setIsCategorizing] = useState(false);
 
@@ -85,18 +90,16 @@ export default function ReportsPage() {
         const constraints = [];
 
         if (date?.from) {
-            constraints.push(where('timestamp', '>=', date.from));
+            constraints.push(where('timestamp', '>=', startOfDay(date.from)));
         }
         if (date?.to) {
-            const toDate = new Date(date.to);
-            toDate.setHours(23, 59, 59, 999);
-            constraints.push(where('timestamp', '<=', toDate));
+            constraints.push(where('timestamp', '<=', endOfDay(date.to)));
         }
 
-        constraints.push(orderBy('timestamp', 'desc')); // Always fetch newest first
+        constraints.push(orderBy('timestamp', sortOrder === 'asc' ? 'asc' : 'desc'));
         
         return query(collection(firestore, 'conversations'), ...constraints);
-    }, [firestore, date]);
+    }, [firestore, date, sortOrder]);
 
     const { data: conversations, isLoading } = useCollection(conversationsQuery);
     const typedConversations = conversations as Conversation[] | null;
@@ -107,7 +110,6 @@ export default function ReportsPage() {
                 setIsCategorizing(true);
                 setGroupedConversations(null);
                 
-                // Manually serialize Firestore Timestamps to ISO strings before passing to the Server Action.
                 const serializableConversations = typedConversations.map(c => ({
                     ...c,
                     timestamp: c.timestamp.toDate().toISOString(),
@@ -126,7 +128,6 @@ export default function ReportsPage() {
                         grouped[theme] = ids.map(id => conversationMap.get(id)!).filter(Boolean);
                     }
                     
-                    // Sort themes, putting "Otros temas" at the end
                     themeOrder.sort((a, b) => {
                         if (a.toLowerCase() === 'otros temas') return 1;
                         if (b.toLowerCase() === 'otros temas') return -1;
@@ -156,16 +157,22 @@ export default function ReportsPage() {
         }
     }, [sortOrder, typedConversations, toast]);
 
-    const getProcessedConversations = () => {
-        if (!typedConversations) return [];
-        if (sortOrder === 'asc') {
-            return [...typedConversations].reverse();
-        }
-        return typedConversations;
+    // Helper to group by date for the default view
+    const getGroupedByDate = () => {
+        if (!typedConversations) return {};
+        const groups: Record<string, Conversation[]> = {};
+        
+        typedConversations.forEach(conv => {
+            const dateKey = format(conv.timestamp.toDate(), "eeee, d 'de' MMMM", { locale: es });
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(conv);
+        });
+        
+        return groups;
     };
-    
-    const finalConversations = getProcessedConversations();
+
     const showLoader = isLoading || isCategorizing;
+    const dateGroups = sortOrder !== 'theme' ? getGroupedByDate() : null;
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
@@ -195,11 +202,11 @@ export default function ReportsPage() {
                                         {date?.from ? (
                                             date.to ? (
                                                 <>
-                                                    {format(date.from, 'LLL dd, y')} -{' '}
-                                                    {format(date.to, 'LLL dd, y')}
+                                                    {format(date.from, 'dd/MM/yyyy')} -{' '}
+                                                    {format(date.to, 'dd/MM/yyyy')}
                                                 </>
                                             ) : (
-                                                format(date.from, 'LLL dd, y')
+                                                format(date.from, 'dd/MM/yyyy')
                                             )
                                         ) : (
                                             <span>Selecciona un rango</span>
@@ -221,15 +228,15 @@ export default function ReportsPage() {
                         </div>
                         {/* Sort Order Select */}
                         <div className="flex-1 space-y-2">
-                             <label className="text-sm font-medium">Ordenar Por</label>
+                             <label className="text-sm font-medium">Visualización / Orden</label>
                             <Select onValueChange={(value: 'desc' | 'asc' | 'theme') => setSortOrder(value)} defaultValue={sortOrder}>
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Ordenar por..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="desc">Más Recientes</SelectItem>
-                                    <SelectItem value="asc">Más Antiguos</SelectItem>
-                                    <SelectItem value="theme">Por Tema</SelectItem>
+                                    <SelectItem value="desc">Más Recientes (por día)</SelectItem>
+                                    <SelectItem value="asc">Más Antiguos (por día)</SelectItem>
+                                    <SelectItem value="theme">Agrupado por Tema (IA)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -255,32 +262,50 @@ export default function ReportsPage() {
                                 <p className="text-muted-foreground">No se encontraron conversaciones para los filtros seleccionados.</p>
                             </div>
                         ) : sortOrder === 'theme' && groupedConversations ? (
-                            // Grouped by theme view
+                            // Grouped by theme view (IA)
                             <Accordion type="multiple" className="w-full">
                                 {Object.entries(groupedConversations).map(([theme, convs]) => (
-                                    <AccordionItem value={theme} key={theme}>
-                                        <AccordionTrigger className="py-4 text-xl font-semibold hover:no-underline">
-                                            {theme} <span className="text-base font-normal text-muted-foreground ml-2">({convs.length} {convs.length === 1 ? 'conversación' : 'conversaciones'})</span>
+                                    <AccordionItem value={theme} key={theme} className="border rounded-lg mb-4 px-4 bg-card shadow-sm">
+                                        <AccordionTrigger className="py-4 text-lg font-semibold hover:no-underline">
+                                            <div className="flex items-center gap-2">
+                                                <span>{theme}</span>
+                                                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                    {convs.length}
+                                                </span>
+                                            </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="pb-4 pl-6">
-                                            {convs.length > 0 ? (
-                                                <Accordion type="single" collapsible className="w-full">
-                                                    {convs.map((conv) => (
-                                                        <ConversationItem conv={conv} key={conv.id}/>
-                                                    ))}
-                                                </Accordion>
-                                            ) : (
-                                                <p className="text-muted-foreground px-1">No hay conversaciones para este tema.</p>
-                                            )}
+                                        <AccordionContent className="pb-4">
+                                            <Accordion type="single" collapsible className="w-full space-y-1">
+                                                {convs.map((conv) => (
+                                                    <ConversationItem conv={conv} key={conv.id}/>
+                                                ))}
+                                            </Accordion>
                                         </AccordionContent>
                                     </AccordionItem>
                                 ))}
                             </Accordion>
                         ) : (
-                            // Default list view
-                            <Accordion type="single" collapsible className="w-full">
-                                {finalConversations.map((conv) => (
-                                    <ConversationItem conv={conv} key={conv.id}/>
+                            // Default view: Grouped by Date
+                            <Accordion type="multiple" className="w-full">
+                                {Object.entries(dateGroups || {}).map(([dateLabel, convs]) => (
+                                    <AccordionItem value={dateLabel} key={dateLabel} className="border rounded-lg mb-4 px-4 bg-card shadow-sm">
+                                        <AccordionTrigger className="py-4 text-lg font-semibold hover:no-underline capitalize">
+                                            <div className="flex items-center gap-2">
+                                                <CalendarDays className="h-5 w-5 text-primary" />
+                                                <span>{dateLabel}</span>
+                                                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                    {convs.length}
+                                                </span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pb-4">
+                                            <Accordion type="single" collapsible className="w-full space-y-1">
+                                                {convs.map((conv) => (
+                                                    <ConversationItem conv={conv} key={conv.id}/>
+                                                ))}
+                                            </Accordion>
+                                        </AccordionContent>
+                                    </AccordionItem>
                                 ))}
                             </Accordion>
                         )}

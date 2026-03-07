@@ -150,6 +150,7 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
 
 2.  **Cómo Usar la Herramienta \`searchDocuments\`:**
     *   Crea consultas de búsqueda concisas y específicas para encontrar la información más relevante.
+    *   Si en la pregunta se solicita referencia o autor del contenido encontrado , menciona en letra itálica los datos del articulo y/o autor.
     *   Puedes usar la herramienta varias veces si la pregunta es compleja y requiere buscar diferentes conceptos.
 
 3.  **Cómo Generar tu Respuesta Final:**
