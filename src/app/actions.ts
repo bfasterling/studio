@@ -8,9 +8,9 @@ import { translateText, TranslateTextInput } from '@/ai/flows/translate-text';
 import { categorizeConversations, CategorizeConversationsInput } from '@/ai/flows/categorize-conversations';
 
 // COST CONSTANTS (Price per 1 million tokens)
-// Gemini 1.5 Flash Prices (Approximate)
-const COST_PER_1M_INPUT_TOKENS = 0.075; // USD
-const COST_PER_1M_OUTPUT_TOKENS = 0.30;  // USD
+// Gemini 2.5 Flash Prices (Approximate)
+const COST_PER_1M_INPUT_TOKENS = 0.30; // USD
+const COST_PER_1M_OUTPUT_TOKENS = 2.50;  // USD
 
 type Message = {
   role: 'user' | 'model';

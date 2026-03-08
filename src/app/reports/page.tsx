@@ -384,26 +384,43 @@ export default function ReportsPage() {
                             </Accordion>
                         ) : (
                             <Accordion type="multiple" className="w-full space-y-3">
-                                {Object.entries(dateGroups || {}).map(([dateLabel, convs]) => (
-                                    <AccordionItem value={dateLabel} key={dateLabel} className="border rounded-lg px-4 bg-card shadow-sm overflow-hidden">
-                                        <AccordionTrigger className="py-4 text-base font-semibold hover:no-underline capitalize">
-                                            <div className="flex items-center gap-2">
-                                                <CalendarDays className="h-4 w-4 text-primary" />
-                                                <span>{dateLabel}</span>
-                                                <span className="text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                                    {convs.length}
-                                                </span>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pb-4">
-                                            <Accordion type="single" collapsible className="w-full space-y-1">
-                                                {convs.map((conv) => (
-                                                    <ConversationItem conv={conv} key={conv.id}/>
-                                                ))}
-                                            </Accordion>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
+                                {Object.entries(dateGroups || {}).map(([dateLabel, convs]) => {
+                                    const dayTokens = convs.reduce((acc, c) => acc + (c.inputTokens || 0) + (c.outputTokens || 0), 0);
+                                    const dayCost = convs.reduce((acc, c) => acc + (c.cost || 0), 0);
+
+                                    return (
+                                        <AccordionItem value={dateLabel} key={dateLabel} className="border rounded-lg px-4 bg-card shadow-sm overflow-hidden">
+                                            <AccordionTrigger className="py-4 text-base font-semibold hover:no-underline capitalize">
+                                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full">
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <CalendarDays className="h-4 w-4 text-primary" />
+                                                        <span>{dateLabel}</span>
+                                                        <span className="text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                                            {convs.length}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs font-normal text-muted-foreground md:mr-4">
+                                                        <span className="flex items-center gap-1">
+                                                            <Activity className="h-3 w-3" />
+                                                            {dayTokens.toLocaleString()} tokens
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Coins className="h-3 w-3" />
+                                                            ${dayCost.toFixed(4)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="pb-4">
+                                                <Accordion type="single" collapsible className="w-full space-y-1">
+                                                    {convs.map((conv) => (
+                                                        <ConversationItem conv={conv} key={conv.id}/>
+                                                    ))}
+                                                </Accordion>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    );
+                                })}
                             </Accordion>
                         )}
                     </div>
