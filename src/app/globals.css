@@ -107,8 +107,9 @@
     @apply mb-3 last:mb-0;
   }
 
+  /* Cambio aquí: Negritas en color primario para que resalten más */
   .prose-chat strong {
-    @apply font-bold text-foreground;
+    @apply font-bold text-primary;
   }
 
   .prose-chat ul {
