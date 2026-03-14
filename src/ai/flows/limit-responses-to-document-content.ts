@@ -149,6 +149,7 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
 4. **Resaltado:** Usa <strong> para destacar términos clave, alimentos importantes o conclusiones. No abuses, úsalo para lo que realmente importa.
 5. **Citas:** Usa <em> para mencionar nombres de archivos o citas textuales de los documentos.
 6. **Párrafos:** Separa las ideas con etiquetas <p> para una lectura cómoda.
+7. **Referencias:** Al FINAL de cada respuesta, después de una línea divisoria (<hr />), incluye SIEMPRE las fuentes consultadas. Usa el formato: <p><small><em>Fuente: [Nombre del archivo 1], [Nombre del archivo 2]...</em></small></p>. Menciona todos los archivos que proporcionaron información para esa respuesta específica.
 
 **INSTRUCCIONES DE CONTINUIDAD Y MEMORIA:**
 1. **Contexto:** Analiza el historial. Si el usuario pregunta por "eso" o "cuánto tiene", identifica a qué alimento o tema se refería anteriormente.
