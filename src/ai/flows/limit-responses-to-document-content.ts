@@ -135,14 +135,17 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
     const llmResponse = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
       tools: [searchDocumentsTool],
-      history: input.history.map(m => ({role: m.role, content: [{text: m.content}]})),
+      messages: input.history.map(m => ({
+        role: m.role,
+        content: [{text: m.content}]
+      })),
       prompt: input.question,
       system: `Eres un agente de chat de IA experto en análisis de documentos. Tu objetivo principal es responder preguntas basándote en la información de los documentos proporcionados, presentando la respuesta de la forma más clara y profesional posible.
 
 **Instrucciones Clave:**
 
 1.  **Analiza la Pregunta del Usuario:**
-    *   **Si es una pregunta conversacional:** Si la pregunta es un saludo, una despedida o una pregunta social simple (ej: 'hola', 'gracias', '¿cómo estás?', 'adiós'), **NO uses ninguna herramienta**. Responde directamente de forma amable y breve.
+    *   **Si es una pregunta conversacional:** Si la pregunta es un saludo, una despedida o una pregunta social simple (ej: 'hola', 'gracias', '¿cómo estás?', 'adiós'), **NO usamos ninguna herramienta**. Responde directamente de forma amable y breve.
     *   **Si es una consulta sobre el contenido:** Si la pregunta busca información que podría estar en los documentos, DEBES usar la herramienta \`searchDocuments\` para encontrarla.
 
 2.  **Cómo Usar la Herramienta \`searchDocuments\`:**
