@@ -179,7 +179,7 @@ export function Chat({ documents, userId }: ChatProps) {
                         <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
                     </Avatar>
                     <div
-                      className="p-3 rounded-lg max-w-[80%] text-sm bg-muted text-foreground"
+                      className="p-3 rounded-lg max-w-[80%] text-sm bg-muted text-foreground prose-chat overflow-x-auto"
                       dangerouslySetInnerHTML={{ __html: conversation.answerText }}
                     />
                 </div>

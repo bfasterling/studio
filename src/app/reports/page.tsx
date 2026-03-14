@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Loader2, CalendarDays, Coins, Activity, MessageSquare } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -80,7 +80,7 @@ function ConversationItem({ conv }: { conv: Conversation }) {
             </AccordionTrigger>
             <AccordionContent className="p-4 bg-muted/30 rounded-md mt-1">
                  <div
-                    className="prose prose-sm max-w-none"
+                    className="prose-chat text-sm max-w-none overflow-x-auto"
                     dangerouslySetInnerHTML={{ __html: conv.answerText }}
                 />
             </AccordionContent>
@@ -93,15 +93,12 @@ export default function ReportsPage() {
     const { user, isUserLoading } = useUser();
     const { toast } = useToast();
     
-    // Defer date initialization to avoid hydration mismatch
     const [date, setDate] = useState<DateRange | undefined>(undefined);
     const [isMounted, setIsMounted] = useState(false);
-    
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc' | 'theme'>('desc');
     const [groupedConversations, setGroupedConversations] = useState<Record<string, Conversation[]> | null>(null);
     const [isCategorizing, setIsCategorizing] = useState(false);
 
-    // Effect to handle hydration and initial date state
     useEffect(() => {
         setIsMounted(true);
         setDate({
@@ -130,7 +127,6 @@ export default function ReportsPage() {
     const { data: conversations, isLoading: isLoadingCollection } = useCollection(conversationsQuery);
     const typedConversations = conversations as Conversation[] | null;
 
-    // Calculate Summary Stats
     const stats = useMemo(() => {
         if (!typedConversations) return { totalQuestions: 0, totalTokens: 0, totalCost: 0 };
         
@@ -238,8 +234,6 @@ export default function ReportsPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                    
-                    {/* Summary Dashboard */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card className="bg-primary/5 border-primary/20">
                             <CardContent className="pt-6">
@@ -283,7 +277,6 @@ export default function ReportsPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-muted/30">
-                        {/* Date Picker */}
                         <div className="flex-1 space-y-2">
                              <label className="text-xs font-bold uppercase text-muted-foreground">Rango de Fechas</label>
                             <Popover>
@@ -324,7 +317,6 @@ export default function ReportsPage() {
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        {/* Sort Order Select */}
                         <div className="flex-1 space-y-2">
                              <label className="text-xs font-bold uppercase text-muted-foreground">Visualización</label>
                             <Select onValueChange={(value: 'desc' | 'asc' | 'theme') => setSortOrder(value)} defaultValue={sortOrder}>
