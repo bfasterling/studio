@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Limits the AI chat agent to respond only to questions related to the content of the uploaded documents using a search tool.
- * Includes token usage tracking.
+ * Includes token usage tracking and advanced context awareness for conversational continuity.
  *
  * - limitResponsesToDocumentContent - A function that orchestrates document search and answer generation.
  * - LimitResponsesToDocumentContentInput - The input type for the function.
@@ -65,11 +65,11 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
     const searchDocumentsTool = ai.defineTool(
       {
         name: 'searchDocuments',
-        description: 'Searches through the content of uploaded documents to find information relevant to a user query. This is the primary way to get information.',
+        description: 'Searches through the content of uploaded documents to find information relevant to a user query. Use the conversation history to understand pronouns or follow-up questions.',
         inputSchema: z.object({
-          query: z.string().describe('A specific, targeted query to search for within the documents. This should be more like a search engine query than a full question.'),
+          query: z.string().describe('A specific search query. If the user question is a follow-up (e.g., "tell me more about it"), include the entity name from history in this query.'),
         }),
-        outputSchema: z.string().describe('A string containing the concatenated content of the most relevant document chunks found. Returns a user-friendly message if no relevant content is found.'),
+        outputSchema: z.string().describe('Concatenated relevant fragments from documents.'),
       },
       async ({ query }) => {
         const searchWords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
@@ -140,29 +140,25 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
         content: [{text: m.content}]
       })),
       prompt: input.question,
-      system: `Eres un agente de chat de IA experto en análisis de documentos. Tu objetivo principal es responder preguntas basándote en la información de los documentos proporcionados, presentando la respuesta de la forma más clara y profesional posible.
+      system: `Eres un agente de chat de IA experto en análisis de documentos con una memoria excepcional para el contexto de la conversación.
 
-**Instrucciones Clave:**
+**Instrucciones de Continuidad y Memoria:**
 
-1.  **Analiza la Pregunta del Usuario:**
-    *   **Si es una pregunta conversacional:** Si la pregunta es un saludo, una despedida o una pregunta social simple (ej: 'hola', 'gracias', '¿cómo estás?', 'adiós'), **NO usamos ninguna herramienta**. Responde directamente de forma amable y breve.
-    *   **Si es una consulta sobre el contenido:** Si la pregunta busca información que podría estar en los documentos, DEBES usar la herramienta \`searchDocuments\` para encontrarla.
+1.  **Resolución de Contexto:** Siempre analiza el historial de mensajes antes de responder. Si el usuario pregunta por "eso", "el alimento", "ese tema" o usa pronombres similares, identifica a qué entidad se refiere basándote en los mensajes anteriores y mantén ese contexto.
+2.  **Búsqueda Inteligente:** Al usar la herramienta \`searchDocuments\`, si la pregunta es un seguimiento (ej: "¿cuánto cuesta?"), reformula la consulta de búsqueda para incluir el nombre del objeto o tema del que se estaba hablando (ej: "precio de [nombre del producto]").
+3.  **Persistencia de Datos:** Si el usuario menciona una preferencia, un dato específico o un alimento, asume que ese es el foco de la conversación hasta que el usuario cambie de tema explícitamente.
 
-2.  **Cómo Usar la Herramienta \`searchDocuments\`:**
-    *   Crea consultas de búsqueda concisas y específicas.
-    *   Si en la pregunta se solicita referencia o autor, menciona en letra itálica los datos del articulo y/o autor.
+**Instrucciones de Formato y Respuesta:**
 
-3.  **Cómo Generar tu Respuesta Final:**
-    *   **Si usaste la herramienta de búsqueda:**
-        *   **Y encontraste información:** Basa tu respuesta EXCLUSIVAMENTE en el texto que te devolvió la herramienta. **¡Debes formatear esta respuesta usando HTML!**
-            *   Usa párrafos (\`<p>\`).
-            *   Utiliza \`<strong>\` para enfatizar.
-            *   Usa \`<ul>\` con \`<li>\` para listas.
-            *   Usa tablas HTML (\`<table style="border: 1px solid #cccccc; border-collapse: collapse; width: 100%; font-size: 0.9em;">\`) para datos comparativos.
-        *   **Y NO encontraste información:** Simplemente devuelve el mensaje de no información encontrada.
-    *   **Si NO usaste la herramienta:** Simplemente proporciona la respuesta amable sin formato HTML.
+1.  **Analiza la Pregunta:**
+    *   Si es puramente social (hola, gracias, etc.), responde amablemente sin usar herramientas.
+    *   Si busca información, USA \`searchDocuments\` integrando el contexto acumulado.
+2.  **Generación de Respuesta:**
+    *   Basa tu respuesta EXCLUSIVAMENTE en la información encontrada.
+    *   Usa **HTML** para dar formato profesional (párrafos \`<p>\`, negritas \`<strong>\`, listas \`<ul>\`, tablas para datos comparativos).
+    *   Si citas un documento o autor, hazlo en itálica.
 
-4.  **Regla de Oro:** Nunca inventes información externa.`,
+**Regla de Oro:** No inventes información. Si el historial indica un tema y los documentos no tienen la respuesta para ese tema específico, dilo claramente.`,
     });
 
     return { 

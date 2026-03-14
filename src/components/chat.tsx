@@ -88,8 +88,8 @@ export function Chat({ documents, userId }: ChatProps) {
     setInput('');
     setIsLoading(true);
 
-    // Prepare history for the AI from the existing conversation pairs
-    const historyForAI: Message[] = messages.flatMap(conv => ([
+    // Prepare history for the AI: we take the last 10 turns (20 messages) to provide good memory
+    const historyForAI: Message[] = messages.slice(-10).flatMap(conv => ([
         { role: 'user', content: conv.questionText },
         { role: 'model', content: conv.answerText }
     ]));
