@@ -1,13 +1,16 @@
+
 'use client';
 
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Chat as ChatComponent } from '@/components/chat';
-import { LucideMessageSquare, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import Image from 'next/image';
+import placeholderImages from '@/app/lib/placeholder-images.json';
 
 function ChatPage() {
   const router = useRouter();
@@ -26,6 +29,8 @@ function ChatPage() {
   const handleReset = () => {
     router.push('/');
   };
+
+  const logo = placeholderImages.logos.find(img => img.id === 'nutrialia-logo');
 
   if (isLoading) {
     return (
@@ -51,11 +56,19 @@ function ChatPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-3xl mx-auto">
-        <header className="flex items-center justify-center gap-3 mb-8">
-          <LucideMessageSquare className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-bold tracking-tight text-center text-foreground font-headline">
-            XSIA
-          </h1>
+        <header className="flex items-center justify-center mb-8">
+          {logo && (
+            <div className="relative w-full max-w-[280px] h-auto aspect-[4/1]">
+              <Image
+                src={logo.url}
+                alt={logo.alt}
+                fill
+                className="object-contain"
+                priority
+                data-ai-hint={logo.hint}
+              />
+            </div>
+          )}
         </header>
         <main>
           <ChatComponent 

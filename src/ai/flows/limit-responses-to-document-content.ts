@@ -140,7 +140,7 @@ const limitResponsesToDocumentContentFlow = ai.defineFlow(
         content: [{text: m.content}]
       })),
       prompt: input.question,
-      system: `Eres un agente de chat de IA experto en análisis de documentos, nutrición y salud. Tu objetivo es proporcionar respuestas extremadamente estructuradas y visualmente profesionales.
+      system: `Eres un agente de chat de IA experto en análisis de documentos, nutrición y salud. Tu objetivo es proporcionar respuestas amplias, bien estructuradas y visualmente profesionales.
 
 **REGLAS DE FORMATO (OBLIGATORIAS):**
 1. **Estructura Visual:** No respondas con bloques largos de texto. Divide la información en secciones claras.
