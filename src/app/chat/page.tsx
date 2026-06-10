@@ -4,14 +4,12 @@
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Chat as ChatComponent } from '@/components/chat';
-import { Loader2, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import Image from 'next/image';
 import placeholderImages from '@/app/lib/placeholder-images.json';
-import Link from 'next/link';
 
 function ChatPage() {
   const router = useRouter();
@@ -44,9 +42,6 @@ function ChatPage() {
         <div className="text-center">
             <h2 className="text-2xl font-semibold mb-4">No se han cargado documentos.</h2>
             <p className="text-muted-foreground mb-6">Por favor, vuelve a la página principal para empezar.</p>
-            <Button asChild>
-              <Link href="/">Volver al Inicio</Link>
-            </Button>
         </div>
       </div>
     );
@@ -55,17 +50,9 @@ function ChatPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="w-full max-w-3xl mx-auto">
-        <header className="flex flex-col items-center mb-8 relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2">
-            <Button variant="ghost" size="sm" asChild className="gap-2">
-              <Link href="/">
-                <ArrowLeft className="h-4 w-4" />
-                <span>Inicio</span>
-              </Link>
-            </Button>
-          </div>
+        <header className="flex flex-col items-center mb-8">
           {logo && (
-            <div className="relative w-full max-w-[320px] h-auto aspect-[4/1]">
+            <div className="relative w-full max-w-[320px] h-auto aspect-[1018/361]">
               <Image
                 src={logo.url}
                 alt={logo.alt}
