@@ -48,16 +48,17 @@ function ChatPage() {
   }
   
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="w-full max-w-3xl mx-auto">
-        <header className="flex flex-col items-center mb-8">
+    <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
+      <div className="w-full max-w-4xl mx-auto">
+        <header className="flex flex-col items-center mb-10">
           {logo && (
-            <div className="relative w-full max-w-[320px] h-auto aspect-[1018/361]">
+            <div className="w-full max-w-[400px]">
               <Image
                 src={logo.url}
                 alt={logo.alt}
-                fill
-                className="object-contain"
+                width={logo.width}
+                height={logo.height}
+                className="w-full h-auto object-contain"
                 priority
                 data-ai-hint={logo.hint}
               />
@@ -71,7 +72,7 @@ function ChatPage() {
           />
         </main>
       </div>
-      <footer className="mt-8 text-center text-muted-foreground text-sm">
+      <footer className="mt-auto pt-8 pb-4 text-center text-muted-foreground text-xs">
         <p>Powered By Exagono Software</p>
       </footer>
     </div>
