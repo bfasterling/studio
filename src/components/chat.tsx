@@ -226,7 +226,12 @@ export function Chat({ documents, userId }: ChatProps) {
             placeholder="Haz una pregunta sobre tus documentos..."
             disabled={isLoading || !userId}
           />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim() || !userId}>
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={isLoading || !input.trim() || !userId}
+            className="bg-[#99b563] hover:bg-[#8ba65a] text-white"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </form>
