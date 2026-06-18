@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Suspense } from 'react';
@@ -51,7 +50,7 @@ function ChatPage() {
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
       <div className="w-full max-w-4xl mx-auto">
-        <header className="flex flex-col items-center mb-10 w-full">
+        <header className="flex flex-col items-center mb-6 w-full">
           {logoConfig ? (
             <div className="w-full max-w-[350px] flex justify-center">
               <Image
