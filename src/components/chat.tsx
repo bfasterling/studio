@@ -230,7 +230,7 @@ export function Chat({ documents, userId }: ChatProps) {
             type="submit" 
             size="icon" 
             disabled={isLoading || !input.trim() || !userId}
-            className="bg-[#99b563] hover:bg-[#8ba65a] text-white"
+            className="bg-[#8CAC56] hover:bg-[#7a9a4b] text-white"
           >
             <Send className="w-4 h-4" />
           </Button>
