@@ -7,8 +7,6 @@ import { Loader2 } from 'lucide-react';
 import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import Image from 'next/image';
-import placeholderImages from '@/app/lib/placeholder-images.json';
 
 function ChatPage() {
   const router = useRouter();
@@ -23,9 +21,6 @@ function ChatPage() {
   const { data: documents, isLoading: isLoadingDocuments } = useCollection(documentsQuery);
 
   const isLoading = isLoadingDocuments || isUserLoading;
-
-  // Buscar el logo por el ID definido en placeholder-images.json
-  const logoConfig = placeholderImages.logos.find(img => img.id === 'nutrialia-logo');
 
   if (isLoading) {
     return (
@@ -48,25 +43,8 @@ function ChatPage() {
   }
   
   return (
-    <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
+    <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-6">
       <div className="w-full max-w-4xl mx-auto">
-        <header className="flex flex-col items-center mb-6 w-full">
-          {logoConfig ? (
-            <div className="w-full max-w-[350px] flex justify-center">
-              <Image
-                src={logoConfig.url}
-                alt={logoConfig.alt}
-                width={logoConfig.width}
-                height={logoConfig.height}
-                className="h-auto w-full object-contain"
-                priority
-                unoptimized
-              />
-            </div>
-          ) : (
-            <h1 className="text-2xl font-bold text-primary">Nutrialia</h1>
-          )}
-        </header>
         <main>
           <ChatComponent 
             documents={documents || []} 
