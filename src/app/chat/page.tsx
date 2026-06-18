@@ -43,7 +43,7 @@ function ChatPage() {
   }
   
   return (
-    <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 md:p-6">
       <div className="w-full max-w-4xl mx-auto">
         <main>
           <ChatComponent 
@@ -51,10 +51,10 @@ function ChatPage() {
             userId={user?.uid}
           />
         </main>
+        <footer className="pt-4 pb-4 text-center text-muted-foreground text-xs">
+          <p>Powered By Exagono Software</p>
+        </footer>
       </div>
-      <footer className="mt-auto pt-8 pb-4 text-center text-muted-foreground text-xs">
-        <p>Powered By Exagono Software</p>
-      </footer>
     </div>
   );
 }
