@@ -1,4 +1,3 @@
-
 {
   "logos": [
     {
@@ -8,6 +7,15 @@
       "height": 361,
       "alt": "Nutrialia Logo",
       "hint": "nutrialia logo"
+    }
+  ],
+  "icons": [
+    {
+      "id": "bot-icon",
+      "url": "/Botonmsg.png",
+      "width": 16,
+      "height": 16,
+      "alt": "AI Bot Icon"
     }
   ]
 }

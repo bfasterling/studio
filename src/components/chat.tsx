@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { getAnswer, AIResponseData } from '@/app/actions';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,10 +14,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Bot, Loader2, Send, User } from 'lucide-react';
+import { Loader2, Send, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { saveConversation } from '@/firebase/firestore/chat-messages';
+import Image from 'next/image';
+import placeholderImages from '@/app/lib/placeholder-images.json';
 
 // AI message structure
 type Message = {
@@ -60,6 +62,8 @@ export function Chat({ documents, userId }: ChatProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+
+  const botIcon = placeholderImages.icons.find(i => i.id === 'bot-icon');
 
   React.useEffect(() => {
     // Scroll to bottom whenever messages change
@@ -155,7 +159,8 @@ export function Chat({ documents, userId }: ChatProps) {
           <div className="space-y-6">
             <div className="flex items-start gap-4">
               <Avatar className="w-8 h-8 border">
-                <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
+                <AvatarImage src={botIcon?.url} alt={botIcon?.alt} />
+                <AvatarFallback>AI</AvatarFallback>
               </Avatar>
               <div className="p-3 rounded-lg bg-muted max-w-[80%]">
                 <p className="text-sm text-foreground">
@@ -176,7 +181,8 @@ export function Chat({ documents, userId }: ChatProps) {
                 </div>
                 <div className="flex items-start gap-4">
                     <Avatar className="w-8 h-8 border">
-                        <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
+                        <AvatarImage src={botIcon?.url} alt={botIcon?.alt} />
+                        <AvatarFallback>AI</AvatarFallback>
                     </Avatar>
                     <div
                       className="p-3 rounded-lg max-w-[80%] text-sm bg-muted text-foreground prose-chat overflow-x-auto"
@@ -200,7 +206,8 @@ export function Chat({ documents, userId }: ChatProps) {
             {isLoading && (
               <div className="flex items-start gap-4">
                 <Avatar className="w-8 h-8 border">
-                   <AvatarFallback><Bot className="w-4 h-4 text-primary" /></AvatarFallback>
+                   <AvatarImage src={botIcon?.url} alt={botIcon?.alt} />
+                   <AvatarFallback><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></AvatarFallback>
                 </Avatar>
                 <div className="flex items-center justify-center p-3 rounded-lg bg-muted">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
