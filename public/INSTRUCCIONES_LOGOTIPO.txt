@@ -1,0 +1,10 @@
+
+INSTRUCCIONES PARA EL LOGOTIPO DE NUTRIALIA:
+
+Para que el logotipo aparezca correctamente en el header del chat, debes realizar los siguientes pasos:
+
+1. Localiza tu archivo de imagen llamado exactamente: logoFNS-Nutrialia.png
+2. Coloca ese archivo dentro de esta carpeta llamada "public" en la raíz de tu proyecto.
+3. La ruta del archivo debe quedar así: [tu-proyecto]/public/logoFNS-Nutrialia.png
+
+Como soy una IA, no puedo "subir" el archivo binario por ti, pero he configurado el código para que lo busque en esa ubicación exacta. Una vez que lo pongas ahí, aparecerá automáticamente en el chat.

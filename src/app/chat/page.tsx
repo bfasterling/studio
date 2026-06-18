@@ -55,10 +55,10 @@ function ChatPage() {
           {logoConfig ? (
             <div className="w-full max-w-[350px] flex justify-center">
               <Image
-                src="/logoFNS-Nutrialia.png"
-                alt="Nutrialia Logo"
-                width={350}
-                height={124}
+                src={logoConfig.url}
+                alt={logoConfig.alt}
+                width={logoConfig.width}
+                height={logoConfig.height}
                 className="h-auto w-full object-contain"
                 priority
                 unoptimized
