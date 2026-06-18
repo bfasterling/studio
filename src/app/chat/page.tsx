@@ -26,7 +26,7 @@ function ChatPage() {
   const isLoading = isLoadingDocuments || isUserLoading;
 
   // Buscar el logo por el ID definido en placeholder-images.json
-  const logo = placeholderImages.logos.find(img => img.id === 'nutrialia-logo');
+  const logoConfig = placeholderImages.logos.find(img => img.id === 'nutrialia-logo');
 
   if (isLoading) {
     return (
@@ -52,16 +52,16 @@ function ChatPage() {
     <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
       <div className="w-full max-w-4xl mx-auto">
         <header className="flex flex-col items-center mb-10 w-full">
-          {logo ? (
+          {logoConfig ? (
             <div className="w-full max-w-[350px] flex justify-center">
               <Image
-                src={logo.url}
-                alt={logo.alt}
+                src="/logoFNS-Nutrialia.png"
+                alt="Nutrialia Logo"
                 width={350}
                 height={124}
                 className="h-auto w-full object-contain"
                 priority
-                unoptimized // Añadido para asegurar que cargue la imagen local sin transformaciones que puedan fallar
+                unoptimized
               />
             </div>
           ) : (
