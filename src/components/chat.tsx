@@ -152,7 +152,7 @@ export function Chat({ documents, userId }: ChatProps) {
   return (
     <Card className="w-full h-[70vh] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Chatea con tus Documentos</CardTitle>
+        <CardTitle>¡Hola! Soy nutrial.<em>ia</em></CardTitle>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-full pr-4">
