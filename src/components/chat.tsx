@@ -150,7 +150,7 @@ export function Chat({ documents, userId }: ChatProps) {
   };
 
   return (
-    <Card className="w-full h-[70vh] flex flex-col shadow-lg">
+    <Card className="w-full h-[90vh] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>¡Hola! Soy nutrial.<em>ia</em></CardTitle>
       </CardHeader>
@@ -164,7 +164,7 @@ export function Chat({ documents, userId }: ChatProps) {
               </Avatar>
               <div className="p-3 rounded-lg bg-muted max-w-[80%]">
                 <p className="text-sm text-foreground">
-                  ¡Hola! He analizado tus documentos. Pregúntame lo que quieras sobre su contenido.
+                  Estoy aquí para resolver tus dudas sobre alimentación y nutrición con información confiable y basada en evidencia científica.
                 </p>
               </div>
             </div>
