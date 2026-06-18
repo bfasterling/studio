@@ -52,7 +52,7 @@ function ChatPage() {
           />
         </main>
         <footer className="pt-4 pb-4 text-center text-muted-foreground text-xs">
-          <p>Powered By Exagono Software</p>
+          <p>Powered By IFNovative B Fasterling</p>
         </footer>
       </div>
     </div>

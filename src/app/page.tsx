@@ -151,7 +151,7 @@ export default function Home() {
         </main>
       </div>
       <footer className="mt-8 text-center text-muted-foreground text-sm">
-        <p>Powered By Exagono Software</p>
+        <p>Powered By IFNovative B Fasterling</p>
       </footer>
     </div>
   );
