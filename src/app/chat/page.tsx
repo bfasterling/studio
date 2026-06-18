@@ -25,6 +25,7 @@ function ChatPage() {
 
   const isLoading = isLoadingDocuments || isUserLoading;
 
+  // Buscar el logo por el ID definido en placeholder-images.json
   const logo = placeholderImages.logos.find(img => img.id === 'nutrialia-logo');
 
   if (isLoading) {
