@@ -150,7 +150,7 @@ export function Chat({ documents, userId }: ChatProps) {
   };
 
   return (
-    <Card className="w-full h-[90vh] flex flex-col shadow-lg">
+    <Card className="w-full h-[81vh] flex flex-col shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>¡Hola! Soy nutrial.<em>ia</em></CardTitle>
       </CardHeader>
