@@ -51,19 +51,21 @@ function ChatPage() {
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 md:p-8">
       <div className="w-full max-w-4xl mx-auto">
-        <header className="flex flex-col items-center mb-10">
-          {logo && (
-            <div className="w-full max-w-[400px]">
+        <header className="flex flex-col items-center mb-10 w-full">
+          {logo ? (
+            <div className="w-full max-w-[350px] flex justify-center">
               <Image
                 src={logo.url}
                 alt={logo.alt}
-                width={logo.width}
-                height={logo.height}
-                className="w-full h-auto object-contain"
+                width={350}
+                height={124}
+                className="h-auto w-full object-contain"
                 priority
-                data-ai-hint={logo.hint}
+                unoptimized // Añadido para asegurar que cargue la imagen local sin transformaciones que puedan fallar
               />
             </div>
+          ) : (
+            <h1 className="text-2xl font-bold text-primary">Nutrialia</h1>
           )}
         </header>
         <main>
